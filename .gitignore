@@ -1,0 +1,26 @@
+node_modules
+.DS_Store
+
+# SvelteKit / Vite build output
+.svelte-kit
+build
+dist
+.vite
+
+# Env (.env.example IS tracked)
+.env
+.env.*
+!.env.example
+
+# Logs & caches
+*.log
+npm-debug.log*
+pnpm-debug.log*
+.eslintcache
+coverage
+.vercel
+.turbo
+
+# Editor
+.idea
+*.swp

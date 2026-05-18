@@ -1,0 +1,16 @@
+.svelte-kit
+build
+dist
+node_modules
+coverage
+.vercel
+pnpm-lock.yaml
+package-lock.json
+LICENSE
+
+# User-authored prose — leave formatting to the author
+docs/
+.claude/
+
+# Generated
+src/lib/db/types.ts
