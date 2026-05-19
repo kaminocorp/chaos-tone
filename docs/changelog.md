@@ -1,6 +1,166 @@
 # Chaos Tone — Changelog
 
+- [0.1.2 — Design Tokens & Primitives](#012--design-tokens--primitives-2026-05-18)
+- [0.1.1 — Routing & Layout Shell](#011--routing--layout-shell-2026-05-18)
 - [0.1.0 — Scaffolding](#010--scaffolding-2026-05-18)
+
+---
+
+## 0.1.2 — Design Tokens & Primitives (2026-05-18)
+
+Phase 3 of the [scaffolding plan](./executing/scaffolding-plan.md) — Design Token & Primitive Layer (minimal). The visual system gained a shared backbone: an expanded `@theme {}` in `src/app.css` (motion durations, border radii, font stacks alongside the Phase 2 palette), five UI primitives under `src/lib/components/ui/` (`Button`, `IconButton`, `Input`, `Slider`, `Panel`), and a region refactor so no Workbench surface or auth route uses raw HTML `<button>` or `<input>` anywhere. Full what/where/why record in [`docs/completions/phase-3-completion.md`](./completions/phase-3-completion.md).
+
+Every clickable affordance in the app now flows through the primitive layer. Future phases add product behavior (state binding, audio, 3D) rather than reinventing button/input/slider styling.
+
+### What landed
+
+**Five UI primitives** — `src/lib/components/ui/Button.svelte` (variants `primary` / `secondary` / `ghost`; sizes `sm` / `md` / `lg`; spreads through any standard `<button>` attribute), `IconButton.svelte` (square; required `label` becomes the accessible name; same variant/size axes), `Input.svelte` (single-line text-y; `type` overridable to `email`/`search`/etc.; `value` is `$bindable`), `Slider.svelte` (range slider wrapping `<input type="range">`; horizontal + vertical orientations; track/thumb styled via `.ct-slider` in `app.css`), and `Panel.svelte` (section wrapper with optional header, optional collapse, and a trailing `actions` snippet slot for header right-side content).
+
+**Expanded design tokens** — `src/app.css`'s `@theme {}` block now adds `--font-sans` and `--font-mono` (system-stack fallbacks; real font files come later), `--duration-quick: 120ms` / `--duration-normal: 160ms` / `--duration-slow: 220ms` (short and decisive per [`frontend-overview.md`](../executing/frontend-overview.md) §9), and `--radius-xs|sm|md|lg`. A `.ct-slider` CSS block at the bottom of the file handles the native range input's track and thumb styling — pseudo-elements (`::-webkit-slider-thumb`, `::-moz-range-track`, etc.) cannot be reached from Tailwind utility classes, so they live in plain CSS that still reads from the same `var(--color-*)` tokens.
+
+**Icon library** — `@lucide/svelte@^1.16.0` installed as a devDependency (peers `svelte ^5`). Eight icons referenced so far across `TopBar` (`Command`, `User`) and `TransportBar` (`Circle`, `Play`, `Square`), each imported as a named export so Rollup's tree-shaker only bundles what's used.
+
+**Region refactor** — `TopBar` (⌘K placeholder → `<IconButton>` with the `Command` icon; avatar circle → `<IconButton>` with `User`), `JournalPanel` (wrapped in `<Panel>`; search field added via `<Input type="search">` bound to local `$state`; "+ New sketch" → `<Button>`), `ChaosPanel` (wrapped in `<Panel>`; six vertical `<Slider>`s bound to a local `weights` `$state` record; "Mutate ▸" → `<Button>`), `InstrumentPanel` (FX 1/2/3 spans → ghost `<Button>`; macro circles stay decorative since the audio-grade knob is Phase 7), `TransportBar` (REC → primary `<Button>` + `Circle` icon; Play/Stop → `<IconButton>` with `Play`/`Square`; Keep/Mutate/Discard → `<Button>`). `/auth/login` likewise lifted to `<Input>` + `<Button>`.
+
+### Notable decisions & why
+
+- **Tailwind 4 `@theme {}` is the single token home — no separate config file.** Spacing, motion, fonts, radii, colors all live in `src/app.css` inside one `@theme {}` block. Tailwind 4 specifically wants tokens here: every variable named `--color-*`, `--font-*`, `--duration-*`, etc. becomes a utility class automatically (`bg-ink-100`, `font-mono`, `duration-quick`). Splitting tokens between CSS and a TS config buys nothing and makes "where does this color live" a two-place question. Consistent with the Phase 1 stance.
+- **Kept Tailwind's default spacing scale; did NOT redefine `--spacing-*`.** The plan calls for "a spacing scale" as a token category. I deliberately did not define `--spacing-*` tokens. Tailwind 4 has a built-in 0.25rem-step spacing scale (`p-1`, …, `p-96`) that's been stress-tested by millions of devs. Overriding `--spacing-*` would either replace that whole scale (forcing every utility class in the codebase to be re-audited) or duplicate values that already exist. Both moves cost real time for zero gain. Semantic spacing tokens (`--spacing-panel-gutter`, etc.) belong *after* wireframes have surfaced repeated specific values worth naming.
+- **Slider styling lives in `app.css`, not in the component.** The native range input's pseudo-elements — `::-webkit-slider-thumb`, `::-webkit-slider-runnable-track`, `::-moz-range-thumb`, `::-moz-range-track` — are unreachable from Tailwind utility classes. Tailwind generates rules keyed on element selectors; vendor-prefixed pseudo-elements on form controls can't be expressed as arbitrary variants without per-property workarounds. Pulling the styling into a plain CSS class is honest and keeps the component file short. The class uses `var(--color-*)` so it still reads from the same token system Tailwind utilities do.
+- **`<input type="range">` instead of a custom pointer-event slider.** Native range inputs come with keyboard accessibility for free (`←`/`→`/`↑`/`↓`/`Home`/`End`/`PgUp`/`PgDn`), screen-reader announcement, focus rings, and OS-level input devices. Building a custom slider that matches *any* of that costs hours; matching *all* of it costs days. The "audio-grade knob" promised in `scaffolding-plan.md` §Phase 7 is a separate component with different physics (drag-radius, scroll-wheel fine-control, double-click-reset, scroll-pixel-to-value mapping). For Phase 3, native is correct; the tactile knob ships where it matters most (the Instrument panel) when Phase 7 lands.
+- **Vertical sliders use `writing-mode: vertical-rl`.** The legacy `-webkit-appearance: slider-vertical` is Chromium-only and has been deprecated in the WHATWG spec discussion. `writing-mode` is the modern cross-browser approach (works in Firefox, Safari, and Chromium, stable since around 2023). `direction: rtl` ensures the bottom of the visible slider corresponds to `min` and the top to `max`, which matches how mixer-style faders read.
+- **`Panel` accepts a `class` prop; region wrappers don't (and shouldn't).** The `class` prop is a "let the parent nudge styling" knob and should live on components that get composed in multiple contexts (primitives). Region components like `JournalPanel` exist exactly once and always go in the same grid cell — there's no caller that should be tweaking their classes. Promiscuous `class` props on every component encourages drift; reserving them for primitives keeps the constraint visible.
+- **Extract `class` from `$props()` rest *before* spreading — bug caught during review.** My first pass had `<button class="… defaults" {...rest}>`. Since Svelte processes attributes left-to-right and `{...rest}` overrides earlier ones, a caller passing `<Button class="w-full">` would have *replaced* the variant/size class string with just `"w-full"` — silently. Fix: (a) pull `class` out of rest into a local `extraClass`, (b) move `{...rest}` *before* the explicit `class="…"`, with `{extraClass}` interpolated at the end so consumers can still augment without losing defaults. This is a Svelte 5 idiom worth memorizing — Svelte doesn't warn about it.
+- **Icons via `@lucide/svelte`, imported as named exports.** `@lucide/svelte@1.16.0` is the Svelte-5–native package (the older `lucide-svelte` is Svelte 4 only). Each icon is its own importable component, so Rollup's tree-shaker only bundles what's referenced — production bundle includes exactly the eight icons used so far, not the ~1500-icon library. Downside: `svelte-check` now walks every icon file (319 → 4001), but that's a one-time cost on a fast SSD and not visible in dev/build wall-clock time.
+- **Chaos sliders have local `$state`, not store-bound state.** The real Box-of-Randomness session store doesn't exist yet — its shape is part of Phase 7 (`createParamStore`) and the not-yet-numbered Box-of-Randomness implementation phase. Wiring the sliders to local state proves the Slider primitive works end-to-end (you can grab a thumb and watch it move) without committing to a store API that's still being designed. Swapping `$state(...)` for `randomnessSessionStore.weights` will be a one-line edit per consumer when the time comes.
+- **Five primitives only — no `Toast`, `Tooltip`, `Switch`, `Tag`, `Modal`, `Drawer`, `Popover`, `Menu`.** The plan specifies exactly five primitives; the frontend overview lists a wishlist. Building `Toast` before there's a notification trigger or `Tooltip` before there's hover-content-worth-tipping is speculative. The wishlist primitives ship in the phases that introduce their callers (Toast → Phase 5 auth feedback; Tooltip → Phase 6+ when knobs need value readouts on hover; etc.).
+
+### Verified by
+
+All four DoD commands run clean:
+
+```
+pnpm lint     # prettier --check . && eslint .   →  All matched files use Prettier code style!
+pnpm check    # svelte-kit sync && svelte-check  →  4001 FILES 0 ERRORS 0 WARNINGS
+pnpm test     # vitest run                       →  1 passed (1)
+pnpm build    # vite build                       →  ✓ built in 4.23s
+pnpm dev      # vite dev                         →  VITE v7.3.3 ready in 398 ms
+```
+
+The `pnpm check` file count jumped from 319 → 4001 because `@lucide/svelte` ships every icon as a separate component file. Production bundle stays small because tree-shaking strips the unused 99% — the build output shows the per-route chunks barely grew, and a new shared `Input.js` chunk (1.98 kB) appeared because Vite saw that `Input` is reachable from both `/` (via `JournalPanel`) and `/auth/login` directly and hoisted it. Live-route probes on a fresh dev server: `200×5 / 303×1` across the full Alpha route set.
+
+### Deliberately deferred (per plan)
+
+| Item | Why deferred |
+|---|---|
+| Storybook | Plan §Phase 3 explicitly says "Storybook is NOT part of v0.1." Primitives are reviewed in-app. |
+| Component-usage docs in `ARCHITECTURE.md` | Plan §Phase 10 owns developer docs. Each primitive carries an explanatory comment at the top of its file, which is what a contributor reads first anyway. |
+| Custom spacing scale | Tailwind's default is fine until wireframes name specific spaces. See decision above. |
+| Audio-reactive accent layer | Needs real analyzer signal — Phase 6+. Token comment in `app.css` flags it. |
+| `Toast` / `Tooltip` / `Switch` / `Tag` / `Drawer` / `Modal` / `Popover` / `Menu` | Ship with their first real consumer rather than speculatively. |
+| `Knob` (audio-grade) | Plan §Phase 3 explicitly says "real audio-grade knob comes later." Phase 7 owns it. |
+| Light theme | Frontend-overview §10 — Alpha is dark only. |
+| `prefers-reduced-motion` override | Deferred to v0.2 per frontend-overview §10. One-line addition when the time comes; token system uses fixed durations for now. |
+
+### Open questions surfaced
+
+- **Spacing-scale token naming** — when the time comes to add semantic spacing tokens, do you prefer numeric (`--spacing-3`) or semantic (`--spacing-panel-gutter`)? I lean semantic for top-level tokens and numeric for primitives. No decision needed yet.
+- **Icon size convention** — I used `size={14}` for `IconButton` content and `size={10}` for inline icons inside `Button`. This is the start of a "small icon" convention. Worth formalizing into tokens (`--size-icon-sm: 14px`) the next time we add icons.
+- **Lucide license** — Lucide is ISC-licensed (very permissive). No action needed unless you specifically want a non-ISC icon set.
+- **`Knob` primitive timing** — the plan puts it in Phase 7, alongside `createParamStore`. That's the first phase where a real synth control matters. I'm comfortable holding the line on "Slider is sufficient until then."
+
+### What this unblocks
+
+- **Phase 4** (Supabase) — builds a profile-edit page in `/settings` using `Input` + `Button` without inventing styles.
+- **Phase 5** (Auth) — the magic-link form is already lifted to primitives in `/auth/login`; Phase 5 wires the `onsubmit` handler and removes the `disabled` attributes.
+- **Phase 6** (Audio proof-of-life) — drops a "Test tone" `<Button>` into `TransportBar`. No new primitive needed.
+- **Phase 7** (`createParamStore`) — demonstrates against the existing `Slider` primitive *and* introduces the audio-grade `Knob` for the Instrument panel. The two live side-by-side: `Slider` for non-audio params (axis weights, generic settings), `Knob` for audio-rate params.
+- **Phase 8** (Threlte) — no new primitives; the 3D mode toggle is the same `Button` family.
+- **Future phases needing notifications, modals, or hover help** — ship `Toast`, `Modal`, `Tooltip` alongside their first real use case (see decision above).
+
+The primitive layer is now "a small set of components everyone shares" rather than "a wishlist for someday." Every later phase that adds product surface area writes less custom CSS than it would have otherwise — and *that* compounding is the point.
+
+---
+
+## 0.1.1 — Routing & Layout Shell (2026-05-18)
+
+Phase 2 of the [scaffolding plan](./executing/scaffolding-plan.md) — Routing & Layout Shell. Every Alpha route now resolves; the Workbench renders in its canonical five-region grid (TopBar / Journal / Stage / Chaos / Instrument / Transport) with each region a visibly-distinct empty stub; a small-screen blocker covers viewports below 1024px; and `src/app.css` carries the first `@theme {}` block sized just enough to give the regions a coherent "instrument" feel. No real product behavior yet — this is the spine every later phase clips features onto. Full what/where/why record in [`docs/completions/phase-2-completion.md`](./completions/phase-2-completion.md).
+
+Every product surface that lands in Phases 3–8 now has a region to clip into and a route to render at. No future phase needs to (re)structure the Workbench grid.
+
+### What landed
+
+**Workbench composite + six region stubs** — `src/lib/components/workbench/Workbench.svelte` arranges six children (`TopBar`, `JournalPanel`, `Stage`, `ChaosPanel`, `InstrumentPanel`, `TransportBar`) into the canonical five-region grid documented in [`frontend-overview.md`](../executing/frontend-overview.md) §3. Each region is its own importable Svelte 5 component with no props, no state, and just enough placeholder content (an axis-label row, four macro labels, three transport-button trio, etc.) to make the layout legible at a glance.
+
+**Auxiliary routes** — `src/routes/sketch/[id]/+page.svelte` (renders the same Workbench as `/`, no hydration yet), `src/routes/memory/+page.svelte`, `src/routes/settings/+page.svelte`, `src/routes/auth/login/+page.svelte` (visual stub of the magic-link form, all inputs disabled), and `src/routes/auth/callback/+server.ts` (placeholder GET handler that 303s back to `/` — Phase 5 will replace the body with the real Supabase code exchange).
+
+**Global chrome** — `src/lib/components/SmallScreenBlocker.svelte` mounted once in `src/routes/+layout.svelte` so it covers *every* route uniformly (including `/auth/login`, which someone might hit from a phone link). It subscribes to `window.matchMedia('(min-width: 1024px)')` — fires once per threshold crossing rather than on every pixel of a drag — and renders a fixed full-screen "Desktop only for now" message when the viewport is too narrow. `src/routes/+page.svelte` now renders `<Workbench />` instead of the Phase 1 placeholder.
+
+**Initial design tokens** — `src/app.css` gained an `@theme {}` block with `--color-ink-950 … --color-ink-100` (a warm-neutral ramp from near-black to parchment) and `--color-accent-500` / `--color-accent-400` (warm copper). Just enough to give the regions distinct surfaces and one accent for hover states. The full token system (spacing scale, radii, motion durations, font stacks, audio-reactive accent layer) is intentionally deferred to Phase 3, which owns it as a phase.
+
+### Notable decisions & why
+
+- **Canonical grid uses inline `grid-template-rows`/`columns`, not Tailwind utility classes.** `Workbench.svelte` sets `grid-template-rows: 48px minmax(0, 1fr) 220px 64px` and `grid-template-columns: 280px minmax(0, 1fr) 320px` via an inline `style=`, while the named placements (`col-span-3`, `col-start-2`, `row-start-3`) stay as Tailwind classes. Tailwind's arbitrary-value grid-template syntax (`grid-rows-[48px_minmax(0,1fr)_220px_64px]`) is technically possible but unreadable at this length and ships the unusual numbers through the JIT for no real benefit. Inline `style` makes the documented contract from `frontend-overview.md` §3 literally visible in one line; swapping in wireframe-derived numbers later is a one-line edit. The named placements remain Tailwind because that's what benefits from class sorting.
+- **`min-h-0` on every row-2 grid cell.** CSS Grid items default to `min-height: auto`, which means a flex child that wants to grow taller than its row (the eventual long sketch list, for example) will silently push the row larger and break the fixed Instrument/Transport footer alignment. `min-h-0` opts each cell out of that intrinsic minimum, so `overflow-y-auto` inside the panels actually clips and scrolls instead of bleeding. Invisible bug until you have real content — easier to inoculate up front than retrofit.
+- **No `$props()` call in propless region stubs.** First pass used `let {}: Record<string, never> = $props()` as a future-proof placeholder. ESLint's `no-empty-pattern` rule rejected it — and correctly so, since an empty destructure discards the right-hand value. In Svelte 5, calling `$props()` is only required when you actually consume props; propless stubs should simply omit the call, and the moment a real prop appears the destructure comes back with content. The cost of "more diff later" is much smaller than seven lint errors that silently encourage developers to disable a useful rule.
+- **`SmallScreenBlocker` uses `matchMedia`, not a resize listener.** For a binary blocker that only cares "are we above 1024px or below," `matchMedia` is the right primitive — it fires once per threshold crossing, not on every pixel of a resize drag. A `resize` listener would fire dozens of times per drag and force us to debounce; `matchMedia` already gives us the debounced signal for free. The `$effect`'s returned cleanup function removes the listener correctly on teardown.
+- **Blocker mounted once in `+layout.svelte`, not per route.** Every route in Alpha should be desktop-only, including `/auth/login` (phone link risk) and `/settings` (no reason to make that one less protected). Mounting once at the layout level guarantees uniform coverage and avoids the "one route forgot to add the blocker" failure mode. The blocker is `position: fixed; inset: 0; z-index: 50` — above any route content without affecting layout flow when it's not displayed.
+- **`/auth/callback` returns a real 303 redirect, not a 200 placeholder.** Phase 5 will replace the handler body with the real Supabase code exchange, which itself ends in a redirect. If a contributor or CI smoke test hits the route during Phases 2–4, they end up somewhere sensible (the Workbench) rather than on a blank page. 303 is what SvelteKit's `redirect()` defaults to for non-form GETs.
+- **Initial design tokens scoped narrowly; full system deferred to Phase 3.** The scaffolding plan splits this work explicitly — Phase 2's final task is "establish initial design tokens" and Phase 3 is the full "Design Token & Primitive Layer." If we shipped the entire token set here, Phase 3 would have nothing left. The minimum-viable set is the one that lets the six region stubs *look visibly distinct* — a small neutral ramp and one accent. Everything else lands when primitives need it.
+- **Both `/` and `/sketch/[id]` render the same Workbench.** `frontend-overview.md` §2 is explicit — both routes show the same console, and the difference is which sketch is loaded into shared stores. With no sketch hydration yet (Phase 4 + Phase 7), the two routes literally look identical, and that's correct. Phase 4 will introduce a `+page.ts` load function that reads `params.id` and hydrates the sketch store, at which point the routes diverge by *which sketch is current*, not by *which UI renders*.
+
+### Verified by
+
+All four DoD commands run clean against the updated tree:
+
+```
+pnpm lint     # prettier --check . && eslint .   →  All matched files use Prettier code style!
+pnpm check    # svelte-kit sync && svelte-check  →  319 FILES 0 ERRORS 0 WARNINGS
+pnpm test     # vitest run                       →  1 passed (1)
+pnpm build    # vite build                       →  ✓ built in 1.10s
+pnpm dev      # vite dev                         →  VITE v7.3.3 ready in 413 ms
+```
+
+Live-route probe of every new path on a clean dev server:
+
+```
+GET /              → 200
+GET /sketch/abc    → 200
+GET /memory       → 200
+GET /settings      → 200
+GET /auth/login    → 200
+GET /auth/callback → 303 → /        (placeholder redirect, as designed)
+```
+
+`adapter-auto`'s "Could not detect a supported production environment" warning is still present — `@sveltejs/adapter-vercel` swap is Phase 9.
+
+### Deliberately deferred (per plan)
+
+| Item | Why deferred |
+|---|---|
+| Full `@theme {}` token system (spacing, radii, type, motion) | Phase 3 owns this as a phase. Shipping it here would leave Phase 3 with nothing. |
+| Primitive components (`Button`, `Slider`, `Panel`, `Input`, `IconButton`) | Same — Phase 3's whole point. Region stubs use raw `<button>`/`<input>` for now because they're disabled placeholders; Phase 3 lifts them. |
+| Icon library | Phase 3 — grouped with primitives. Region stubs use inline unicode (`▶`, `■`, `●`) which is throwaway. |
+| Real responsive collapse handles on Journal/Chaos | `frontend-overview.md` mentions them, but the scaffolding plan doesn't require them in Phase 2. |
+| `ARCHITECTURE.md` documenting the grid | Phase 10 owns developer docs. The grid is fully documented in `frontend-overview.md` §3 and in a comment inside `Workbench.svelte`. |
+
+### Open questions surfaced
+
+- **Grid proportions** — I used the starting numbers from `frontend-overview.md` §3 (`280 / flex / 320`, `48 / flex / 220 / 64`). These are documented as "starting points" and will move once wireframing happens. Nothing to decide now.
+- **Region stub content** — each stub has just enough placeholder content (axis labels, macro labels, transport-button text) to make the layout legible. If you'd rather the regions be truly empty boxes, it's a one-line edit per file. Current choice trades a little visual noise for a much more useful "is the layout correct" review surface.
+- **Color naming** — `ink-*` rather than `neutral-*` to distinguish the project palette from Tailwind's default `neutral-*` (which is colder, blue-tinted) and to signal these aren't generic grayscale — they're the *Chaos Tone* warm-neutral ramp. Easy to rename later; flagged in case you'd prefer a different convention.
+- **Auth callback redirect target** — currently bounces to `/`. Phase 5 may want a "thanks, signing you in…" intermediate, but for now `/` is the right destination (the Workbench is also the post-login landing per `frontend-overview.md` §6.3).
+
+### What this unblocks
+
+- **Phase 3** (Design Tokens & Primitives) — lifts the placeholder buttons/inputs in the region stubs into proper `Button`, `IconButton`, `Slider`, `Input`, `Panel` primitives without restructuring the layout.
+- **Phase 4** (Supabase) — adds `+page.server.ts` files alongside existing routes; the file structure is in place.
+- **Phase 5** (Auth) — replaces the body of `auth/callback/+server.ts` and wires up the `auth/login/+page.svelte` form. No new files.
+- **Phase 6** (Audio proof-of-life) — drops the test-tone button into the existing `TransportBar.svelte`.
+- **Phase 7** (`createParamStore`) — wires a knob in `InstrumentPanel.svelte` and a readout in `Stage.svelte`. Both files exist.
+- **Phase 8** (Threlte) — dynamically imports a `Stage3D` component into the existing `Stage.svelte` 3D toggle.
+
+Phase 2 was the last phase that touches *structure*. Phases 3+ touch *content*.
 
 ---
 

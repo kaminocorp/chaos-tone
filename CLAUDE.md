@@ -35,12 +35,14 @@ Vitest picks up `src/**/*.{test,spec}.{js,ts}` (see `vite.config.ts`).
 ## Architecture
 
 ### Stack
+
 - **Framework**: SvelteKit (latest stable) + **Svelte 5 with runes mode** (`runes: true` in `svelte.config.js`). Use `$state`, `$derived`, `$effect`, `$props` — not legacy reactive statements or `export let`.
 - **Styling**: **Tailwind CSS 4, CSS-first** via `@tailwindcss/vite`. There is intentionally **no `tailwind.config.ts`** — theme tokens, plugins, and content globs live in `src/app.css` (currently just `@import 'tailwindcss';`). Phase 3 will add `@theme { … }` design tokens here.
 - **TypeScript**: strict, with `noUncheckedIndexedAccess: true` on top of the SvelteKit defaults. Treat array/object index access as `T | undefined`.
 - **Testing**: Vitest only (no Playwright yet; deferred to v0.2).
 
 ### Path aliases (declared in `svelte.config.js`)
+
 - `$lib` → `src/lib` (SvelteKit default)
 - `$features` → `src/lib/features` (folder not yet created)
 - `$stores` → `src/lib/stores` (folder not yet created)
@@ -48,6 +50,7 @@ Vitest picks up `src/**/*.{test,spec}.{js,ts}` (see `vite.config.ts`).
 Aliases flow into TypeScript via the generated `.svelte-kit/tsconfig.json`. Do not duplicate them in `tsconfig.json` `paths`.
 
 ### Planned source layout (per scaffolding plan §3)
+
 ```
 src/
   routes/                 # SvelteKit routes only
@@ -74,6 +77,7 @@ These are documented in [`docs/executing/frontend-overview.md`](./docs/executing
 5. **Tone.js requires a user gesture.** `Tone.start()` only runs in response to a click/keypress. Never start the audio context on page load.
 
 ### Aesthetic guardrails (per `frontend-overview.md` §9)
+
 - Dark, "instrument" feel — not modern SaaS dashboards, not Web3 neon.
 - Motion is **reactive, not idle** — visuals respond to audio analyzers or user input. Avoid ambient animations.
 - Desktop-only for Alpha; viewports < 1024px show a blocker, not a degraded responsive layout.
@@ -90,6 +94,7 @@ These are documented in [`docs/executing/frontend-overview.md`](./docs/executing
 ## Working with the planning docs
 
 `docs/` contains the source-of-truth narrative for this project. Before making non-trivial changes, skim:
+
 - [`docs/vision.md`](./docs/vision.md) — product north star.
 - [`docs/alpha-tech-stack.md`](./docs/alpha-tech-stack.md) — stack decisions for the first internet-required release.
 - [`docs/executing/scaffolding-plan.md`](./docs/executing/scaffolding-plan.md) — the 10-phase plan and what each phase opens up.

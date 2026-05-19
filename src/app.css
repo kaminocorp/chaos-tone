@@ -1,1 +1,135 @@
 @import 'tailwindcss';
+
+/*
+ * Phase 3: full initial design-token set. Tokens defined inside @theme
+ * become Tailwind utility classes automatically — e.g. `--color-ink-100`
+ * exposes `bg-ink-100`, `text-ink-100`, `border-ink-100`, etc.
+ *
+ * What lives here:
+ *   - The warm-neutral `ink-*` ramp and `accent-*` highlight (set in Phase 2).
+ *   - Font stacks for the two type registers (humanist + monospace).
+ *   - A small set of motion durations matching frontend-overview.md §9
+ *     ("short and decisive · 120–200ms").
+ *   - Border radii used by Panel / Button / Input primitives.
+ *
+ * What does NOT live here yet:
+ *   - A bespoke spacing scale — Tailwind's default 0.25rem step is fine for
+ *     Alpha and overriding it would force every utility to be re-audited.
+ *   - The audio-reactive accent layer (alpha-shifting copper). That needs
+ *     real analyzer signal (Phase 6) before it's worth defining.
+ */
+@theme {
+	/* Neutral ramp — warm black → parchment. */
+	--color-ink-950: #0e0d0c;
+	--color-ink-900: #14130f;
+	--color-ink-850: #181612;
+	--color-ink-800: #1a1917;
+	--color-ink-700: #24221e;
+	--color-ink-600: #2f2c27;
+	--color-ink-500: #4a463f;
+	--color-ink-400: #6b665c;
+	--color-ink-300: #9a9389;
+	--color-ink-200: #c4bdb1;
+	--color-ink-100: #e8e3da;
+
+	/* Single primary accent — warm copper, slightly imperfect. */
+	--color-accent-500: #d97f3a;
+	--color-accent-400: #e8995a;
+
+	/* Type stacks. Real font files come later; system fallbacks are honest
+	   for Alpha and won't FOUT. */
+	--font-sans:
+		'Inter', ui-sans-serif, system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial,
+		sans-serif;
+	--font-mono:
+		'JetBrains Mono', ui-monospace, SFMono-Regular, Menlo, Consolas, 'Liberation Mono', monospace;
+
+	/* Motion durations — short and decisive per frontend-overview.md §9. */
+	--duration-quick: 120ms;
+	--duration-normal: 160ms;
+	--duration-slow: 220ms;
+
+	/* Border radii — primitives reach for these by name. */
+	--radius-xs: 2px;
+	--radius-sm: 4px;
+	--radius-md: 6px;
+	--radius-lg: 10px;
+}
+
+html,
+body {
+	background-color: var(--color-ink-950);
+	color: var(--color-ink-100);
+	font-family: var(--font-sans);
+}
+
+/* Slider track styling is hard to apply inline because the pseudo-elements
+   (`::-webkit-slider-thumb`, `::-moz-range-thumb`) can't be reached by
+   Tailwind. The `.ct-slider` class is consumed by the Slider primitive. */
+.ct-slider {
+	-webkit-appearance: none;
+	appearance: none;
+	background: transparent;
+	cursor: pointer;
+}
+.ct-slider:focus-visible {
+	outline: 2px solid var(--color-accent-500);
+	outline-offset: 2px;
+}
+/* Horizontal track */
+.ct-slider[data-orientation='horizontal']::-webkit-slider-runnable-track {
+	height: 4px;
+	background: var(--color-ink-800);
+	border-radius: var(--radius-xs);
+}
+.ct-slider[data-orientation='horizontal']::-moz-range-track {
+	height: 4px;
+	background: var(--color-ink-800);
+	border-radius: var(--radius-xs);
+}
+/* Vertical track — writing-mode is the modern way; appearance:slider-vertical
+   is a Chromium-only legacy fallback. */
+.ct-slider[data-orientation='vertical'] {
+	writing-mode: vertical-rl;
+	direction: rtl;
+	width: 6px;
+}
+.ct-slider[data-orientation='vertical']::-webkit-slider-runnable-track {
+	width: 4px;
+	background: var(--color-ink-800);
+	border-radius: var(--radius-xs);
+}
+.ct-slider[data-orientation='vertical']::-moz-range-track {
+	width: 4px;
+	background: var(--color-ink-800);
+	border-radius: var(--radius-xs);
+}
+/* Thumb */
+.ct-slider::-webkit-slider-thumb {
+	-webkit-appearance: none;
+	appearance: none;
+	width: 12px;
+	height: 12px;
+	border-radius: 9999px;
+	background: var(--color-ink-100);
+	border: 1px solid var(--color-ink-700);
+	margin-top: -4px;
+	transition: background var(--duration-quick) ease;
+}
+.ct-slider::-moz-range-thumb {
+	width: 12px;
+	height: 12px;
+	border-radius: 9999px;
+	background: var(--color-ink-100);
+	border: 1px solid var(--color-ink-700);
+}
+.ct-slider:hover::-webkit-slider-thumb {
+	background: var(--color-accent-400);
+}
+.ct-slider:hover::-moz-range-thumb {
+	background: var(--color-accent-400);
+}
+.ct-slider:disabled {
+	cursor: not-allowed;
+	opacity: 0.5;
+}
