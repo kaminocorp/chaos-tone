@@ -48,5 +48,8 @@
 		"onlyBuiltDependencies": [
 			"esbuild"
 		]
+	},
+	"dependencies": {
+		"tone": "^15.1.22"
 	}
 }

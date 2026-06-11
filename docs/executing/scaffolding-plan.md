@@ -7,16 +7,32 @@
 
 ---
 
+## Amendment — Stateless v1 (2026-06-10)
+
+**Decision**: v1 ships with **no backend, no accounts, and no persistence**. The entire Supabase/auth track is deferred until after the product proves itself locally. We want to spend the next stretch on the parts that make Chaos Tone *Chaos Tone* — audio, the param-store contract, the Box of Randomness surface — not on platform plumbing.
+
+**What this changes:**
+
+- **Phase 4 (Supabase) and Phase 5 (Auth) are deferred.** They remain documented below as written, for whenever we resume them — but they are *not* on the v1 path.
+- **Persistence is truly ephemeral.** A page refresh is a blank slate. No IndexedDB, no localStorage, no cloud. The "sketch is the atomic unit / save = snapshot the stores" idea still holds *in memory* for a session; it just isn't written anywhere yet. The local-cache and offline story from `alpha-tech-stack.md` §9 is a later project.
+- **The `/auth/*` routes and the `src/lib/db/` folder stay dormant.** The disabled login/callback stubs from Phase 2 remain in the tree, unused, rather than being deleted — cheap to leave, cheap to revive.
+- **Phase 9 (Deploy) loses its Supabase env vars** and no longer gates on auth being testable in a deployed environment.
+- **The Workbench is not auth-gated.** `/` opens straight to the console.
+
+The **v1 critical path becomes: Phase 1 → 2 → 3 → 6 → 7**, with Phase 8 (3D) parallelizable after Phase 2 and Phase 9 (deploy) / Phase 10 (docs) closing it out. The sections below are left intact for historical accuracy; where the original v0.1 text assumes a backend, read it through this amendment.
+
+---
+
 ## 0. What "v0.1" Means
 
-**v0.1 is the moment a new contributor can clone the repo, run two commands, and see the Workbench shell load in their browser with auth working, audio confirmed playable, 3D confirmed renderable, and Supabase connected — without any real product features yet.**
+**v0.1 is the moment a new contributor can clone the repo, run two commands, and see the Workbench shell load in their browser with audio confirmed playable and 3D confirmed renderable — without any real product features yet, and (per the Stateless v1 amendment above) with no backend, accounts, or persistence.**
 
 ### v0.1 is IN scope
 - SvelteKit project with strict TypeScript, Tailwind 4, ESLint, Prettier, `svelte-check`.
 - All Workbench regions present as empty stub components (TopBar, Journal, Stage, Chaos, Instrument, Transport).
 - All routes scaffolded (`/`, `/sketch/[id]`, `/memory`, `/settings`, `/auth/*`).
-- Supabase project provisioned with initial schema, RLS policies, and generated TypeScript types.
-- Email + magic-link auth working end-to-end with session restoration.
+- ~~Supabase project provisioned with initial schema, RLS policies, and generated TypeScript types.~~ **Deferred — stateless v1 (see amendment).**
+- ~~Email + magic-link auth working end-to-end with session restoration.~~ **Deferred — stateless v1 (see amendment).**
 - A single "play test tone" button that proves the Tone.js pipeline is alive.
 - A single placeholder 3D mesh in the Stage proving Threlte is wired up and lazy-loaded.
 - Param-store helper (`createParamStore`) demonstrated by *one* end-to-end binding: a knob in the Instrument panel → store → Tone.js param → visual readout.
@@ -50,7 +66,7 @@ The phases are ordered by **dependency, not by visibility**. We do not start wit
 4. **Audio and 3D "proofs of life" before any product use**: Tone.js and Threlte both have real setup gotchas (AudioContext requires a user gesture; Threlte canvases need lazy-loading discipline). Confirming they work end-to-end on day one removes huge risk.
 5. **CI before deployment**: We want red builds to block green deploys.
 
-The **critical path** is: Phase 1 → 2 → 4 → 5. Phases 3, 6, 7, 8 can run partially in parallel once their dependencies are met.
+The **critical path** is: Phase 1 → 2 → 3 → 6 → 7 (per the Stateless v1 amendment — Phases 4 and 5 are deferred). Phase 8 can run in parallel once Phase 2 lands; Phases 9–10 close it out.
 
 ---
 
@@ -137,7 +153,9 @@ The **critical path** is: Phase 1 → 2 → 4 → 5. Phases 3, 6, 7, 8 can run p
 
 ---
 
-### Phase 4 — Supabase Project & Initial Schema
+### Phase 4 — Supabase Project & Initial Schema  ⏸️ DEFERRED (stateless v1)
+> Not on the v1 path — see the Stateless v1 amendment. Kept as written for when backend work resumes.
+
 **Goal**: A live Supabase project with the v0.1 schema, RLS, and generated TypeScript types committed.
 **Effort**: M (2–3 days, including waiting on platform setup)
 **Dependencies**: Phase 1
@@ -164,7 +182,9 @@ The **critical path** is: Phase 1 → 2 → 4 → 5. Phases 3, 6, 7, 8 can run p
 
 ---
 
-### Phase 5 — Authentication Flow
+### Phase 5 — Authentication Flow  ⏸️ DEFERRED (stateless v1)
+> Not on the v1 path — see the Stateless v1 amendment. The `/auth/*` route stubs stay dormant until this resumes.
+
 **Goal**: A user can sign up, log in via magic link, log out, and have their session persist across reloads.
 **Effort**: M (2–3 days)
 **Dependencies**: Phase 2, Phase 4
@@ -252,11 +272,11 @@ The **critical path** is: Phase 1 → 2 → 4 → 5. Phases 3, 6, 7, 8 can run p
 ### Phase 9 — CI/CD & Deployment
 **Goal**: Every PR runs lint + typecheck + build in CI; every push to `main` deploys to Vercel; every PR gets a preview URL.
 **Effort**: S (1 day)
-**Dependencies**: Phase 1; auth (Phase 5) needs deployed environment to test fully
+**Dependencies**: Phase 1 (stateless v1 — the former auth/Phase 5 coupling no longer applies)
 
 **Tasks**
 - Connect the GitHub repo to Vercel; configure SvelteKit adapter (`@sveltejs/adapter-vercel`).
-- Configure Vercel environment variables (Supabase URL, anon key) for production + preview.
+- ~~Configure Vercel environment variables (Supabase URL, anon key) for production + preview.~~ Deferred — stateless v1 needs no server env vars yet.
 - Add `.github/workflows/ci.yml`:
   - On `pull_request`: install, lint, typecheck, build.
   - On `push` to `main`: same, plus a deploy hook (or rely on Vercel's GitHub integration).
@@ -267,7 +287,7 @@ The **critical path** is: Phase 1 → 2 → 4 → 5. Phases 3, 6, 7, 8 can run p
 **Definition of Done**
 - Opening a PR triggers CI; failing lint blocks merge.
 - Merging to `main` deploys to production within ~5 minutes.
-- Each PR gets a unique preview URL with its own Supabase preview branch (or shared dev project for now).
+- Each PR gets a unique preview URL. ~~(with its own Supabase preview branch / shared dev project)~~ — N/A for stateless v1.
 
 ---
 
@@ -347,7 +367,7 @@ The release is **v0.1** when *all* of the following are true:
 
 1. Fresh clone + 30-minute setup yields a running app for any contributor.
 2. CI is green on `main`.
-3. Production URL works: opens to login → magic link → Workbench shell loads.
+3. Production URL works: opens directly to the Workbench shell — no login (stateless v1).
 4. The test-tone button produces sound.
 5. The single bound knob changes pitch in real time.
 6. Toggling Stage to 3D shows a rotating mesh.
@@ -379,9 +399,9 @@ Criterion 10 is the real test. Everything else is verifiable locally; criterion 
 |---|---|
 | Tone.js AudioContext lifecycle surprises | Phase 6 forces us to confront this on day one, not when it blocks a feature. |
 | Threlte bundle bloat | Phase 8 includes a bundle audit; lazy-loading is mandatory from the first 3D component. |
-| Supabase RLS misconfiguration | Phase 4 requires manual verification with both authed and unauthed sessions. |
+| ~~Supabase RLS misconfiguration~~ | Moot for v1 — no backend (stateless v1). Revisit with Phase 4. |
 | Strict TypeScript slows early velocity | Accepted cost; the alternative (loose types) compounds painfully later. |
-| Magic-link emails not arriving | Use Supabase's built-in email in dev; switch to a real provider (Resend, Postmark) in v0.2 or sooner if needed. |
+| ~~Magic-link emails not arriving~~ | Moot for v1 — no auth (stateless v1). Revisit with Phase 5. |
 | SvelteKit + Threlte version drift | Pin versions in `package.json`; document upgrade procedure in ARCHITECTURE. |
 
 ---
@@ -389,15 +409,15 @@ Criterion 10 is the real test. Everything else is verifiable locally; criterion 
 ## 7. Open Questions Before Starting
 
 1. **Repo location** — is this repo (`Crimson Sun/chaos-tone`) the final home, or are we moving to a fresh repo?
-2. **Supabase organization / project naming** — under which org should the dev/staging/prod projects live?
+2. ~~**Supabase organization / project naming**~~ — deferred with Phase 4 (stateless v1).
 3. **Custom domain for production** — needed for v0.1, or punt to v0.2? (Vercel preview URLs are fine for development.)
-4. **Email provider for magic links** — Supabase default (limited) or set up Resend/Postmark in Phase 5?
+4. ~~**Email provider for magic links**~~ — deferred with Phase 5 (stateless v1).
 5. **Husky pre-commit hooks** — yes/no? They speed up review but slow down commits.
 6. **License** — pick now (per alpha-tech-stack §6 it's an open question) or punt?
 7. **Branch protection** — should `main` be protected and require PR reviews from day one?
 
 ---
 
-**This plan is ordered for least-painful execution, not for fastest visible progress.** Phases 1–4 produce nothing demo-worthy but set the foundation. Demo-worthy work starts in Phase 5 and accelerates through Phases 6–8.
+**This plan is ordered for least-painful execution, not for fastest visible progress.** Phases 1–3 set the foundation. With the backend deferred (stateless v1), demo-worthy work starts at **Phase 6 (audio proof-of-life)** and accelerates through Phases 7–8.
 
 Once v0.1 is live, every subsequent change is product work — and *that's* when speed of iteration starts to compound.

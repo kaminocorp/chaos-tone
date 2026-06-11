@@ -1,0 +1,1 @@
+Please take a look at docs/vision.md, AGENTS.md (or CLAUDE.md if not AGENTS file is present) and docs/changelog.md (only first 150-250 lines or so, as it's a long file) so you have a good overview of what we're building/working on.

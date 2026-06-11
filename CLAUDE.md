@@ -4,7 +4,9 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project state
 
-Chaos Tone is a SvelteKit-based "trainable offline music sketchbook." The repo is currently at **v0.1 scaffolding only** — Phase 1 of a 10-phase plan in [`docs/executing/scaffolding-plan.md`](./docs/executing/scaffolding-plan.md). No product features exist yet: no Tone.js, no Threlte, no Supabase, no auth, no real components. The current code is plumbing (configs + a blank page) that lints, typechecks, tests, and builds.
+Chaos Tone is a SvelteKit-based "trainable offline music sketchbook." The repo is **v0.1 scaffolding** following a 10-phase plan in [`docs/executing/scaffolding-plan.md`](./docs/executing/scaffolding-plan.md). **Phases 1–3 have landed** (tooling foundation, routing & layout shell, design tokens & UI primitives — see `docs/completions/` and `docs/changelog.md`). No product features exist yet: no Tone.js, no Threlte, no real audio/3D/state. The current code is plumbing (configs, the Workbench region shell, and five UI primitives) that lints, typechecks, tests, and builds.
+
+**Stateless v1 (decided 2026-06-10).** v1 ships with **no backend, no accounts, and no persistence** — it is **truly ephemeral** (a refresh is a blank slate; no IndexedDB/localStorage/cloud). The entire **Supabase + auth track (Phases 4 & 5) is deferred**; do not add `@supabase/supabase-js`, a `src/lib/db/` client, auth gating, or persistence without explicit direction. The `/auth/*` route stubs stay **dormant** (kept, unused). The v1 critical path is **Phase 1 → 2 → 3 → 6 → 7** (audio → param-store), with Phase 8 (3D) parallel and Phases 9–10 closing out. See the "Stateless v1" amendment at the top of the scaffolding plan for the full consequence list. The "sketch = snapshot the stores" idea still holds *in memory* for a session; it just isn't written anywhere yet.
 
 When asked to "add a feature," first check whether the relevant phase has landed. If it hasn't, the work probably belongs to that phase's plan, not a one-off addition. See `docs/completions/` for what's actually shipped.
 

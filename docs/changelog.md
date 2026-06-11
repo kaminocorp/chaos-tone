@@ -1,8 +1,68 @@
 # Chaos Tone — Changelog
 
+- [0.1.3 — Audio Proof-of-Life](#013--audio-proof-of-life-2026-06-11)
 - [0.1.2 — Design Tokens & Primitives](#012--design-tokens--primitives-2026-05-18)
 - [0.1.1 — Routing & Layout Shell](#011--routing--layout-shell-2026-05-18)
 - [0.1.0 — Scaffolding](#010--scaffolding-2026-05-18)
+
+---
+
+## 0.1.3 — Audio Proof-of-Life (2026-06-11)
+
+Phase 6 of the [scaffolding plan](./executing/scaffolding-plan.md) — Audio Proof-of-Life, and the **first phase on the stateless v1 critical path** (1 → 2 → 3 → 6 → 7). Click a button, hear a 200 ms sine: the full **Tone.js → Web Audio** pipeline is confirmed alive inside SvelteKit + Svelte 5 runes — started behind a user gesture, SSR-safe, and code-split out of the initial bundle. A new `src/lib/audio/` module (`context.ts` lifecycle owner + throwaway `test-tone.ts`) backs a temporary "Test tone (will be removed)" button in `TransportBar`. Full what/where/why record in [`docs/completions/phase-6-completion.md`](./completions/phase-6-completion.md).
+
+This de-risks the three audio gotchas (user-gesture requirement, SSR-hostile browser globals, bundle bloat) that would otherwise block every later audio feature. Phase 7 (`createParamStore`) plugs straight into the reusable synth instance left reachable here.
+
+### What landed
+
+**Audio lifecycle module** — `src/lib/audio/context.ts` is the single owner of "is audio supported?" and "has the context started?". `isAudioSupported()` is a synchronous, SSR-safe feature check (`'AudioContext' in window`); `ensureAudioStarted()` lazily does `await import('tone')` then `Tone.start()`, both idempotent via module-scoped singletons. The header comment documents the user-gesture rule, the no-top-level-import rule, and the `lookAhead` / `latencyHint` latency tunables — Phase 10 lifts this into `ARCHITECTURE.md`.
+
+**Test tone** — `src/lib/audio/test-tone.ts` (`playTestTone()`) lazily creates one reused `Tone.Synth` (sine oscillator) and fires `triggerAttackRelease(440, 0.2)`. The Synth's amplitude envelope avoids the click/pop a bare oscillator would make. Explicitly throwaway: Phase 7 swaps the hardcoded `440` for a value read from a param store.
+
+**Button wiring** — `TransportBar.svelte` gains a secondary "Test tone (will be removed)" button in the centre cluster, an `async handleTestTone()` (feature-detect → try/catch → `console.error`), and an inline `role="alert"` error span bound to `audioError` (`$state`). Existing Rec/Play/Stop/Keep/Mutate/Discard buttons untouched and still `disabled`.
+
+**Dependency** — `tone@15.1.22` under `dependencies` (runtime code). No `pnpm.onlyBuiltDependencies` change — Tone is pure JS, no postinstall/native binary.
+
+**Unit test** — `src/lib/audio/context.test.ts` mocks the dynamically-imported `tone` module and proves the start-once guard (`Tone.start()` called exactly once across multiple `ensureAudioStarted()` calls).
+
+### Notable decisions & why
+
+- **Dynamic `import('tone')` inside a function, never at module top level.** `TransportBar` statically imports the audio modules, so a top-level `import * as Tone from 'tone'` would execute during SSR (no `window`) and pull ~340 kB into the initial bundle. The runtime import lives only inside `ensureAudioStarted()`; type-only imports (`import type * as ToneModule from 'tone'`) give full typing and are erased at compile time. Same lazy discipline Threlte uses in Phase 8.
+- **The code-split is verified, not assumed.** The build emits Tone as its own chunk (340 kB / 81 kB gzip, signature `const dr="15.1.22"`); the Workbench chunk references it exactly once as a dynamic `import("./…")`, never statically; and the SSR HTML for `/` has no static `tone` script reference. The DoD "not in the initial bundle" is confirmed structurally.
+- **Lifecycle and sound source are split across two files.** `context.ts` outlives the proof-of-life (Phase 7+ keep calling `ensureAudioStarted()`); `test-tone.ts` is throwaway and self-labels as such. Deleting the test tone later won't disturb the lifecycle owner.
+- **One reused `Synth`, module-scoped.** Avoids create/dispose churn per click and is reachable so Phase 7 can make its frequency reactive while a tone holds.
+- **Sticky activation covers the async gap.** The click handler runs synchronously inside the gesture; the page keeps sticky activation across the awaited dynamic import, so resuming the context still counts as user-initiated.
+- **Inline `$state` error message, not a `Toast`.** `Toast` was tied to the deferred Phase 5 and doesn't exist; an inline `role="alert"` span is honest and sufficient for a button that gets removed in Phase 7. Consistent with the Phase 3 "ship a primitive with its first real consumer" stance.
+- **Latency left at Tone defaults but documented.** Tuning `lookAhead` / `latencyHint` belongs with the first real voice (v0.2); the knobs are recorded in the `context.ts` header so they don't have to be rediscovered.
+
+### Verified by
+
+Headless commands clean:
+
+```
+pnpm check    # svelte-kit sync && svelte-check  →  4676 FILES 0 ERRORS 0 WARNINGS
+pnpm test     # vitest run                       →  2 passed (smoke + context start-once)
+pnpm build    # vite build                       →  ✓ built, no SSR crash; Tone in its own 340 kB chunk
+pnpm dev      # GET / → 200, SSR renders the button, no static tone reference
+```
+
+`pnpm lint` passes for every Phase 6 file. One pre-existing, out-of-scope prettier warning remains on the working-tree copy of `CLAUDE.md` (a user edit predating this phase; committed `HEAD:CLAUDE.md` is clean) — left untouched deliberately.
+
+Three DoD items need a human at a browser with speakers (audible sine; no audio on load via the Step 5 console check; Chrome/Firefox/Safari on macOS, Safari strictest). The structural guarantees behind them are confirmed above; what's left is "do your ears hear it" across engines.
+
+### Deliberately deferred (per plan)
+
+| Item | Why deferred |
+|---|---|
+| Real instrument / voice / preset / effect | Out of scope — this is proof of life. v0.2. |
+| Transport play/record behavior | Rec/Play/Stop stay `disabled`; scheduling is later. |
+| Reactive / store-bound frequency | Phase 7 (`createParamStore`). The `440` is hardcoded on purpose. |
+| Latency tuning (`lookAhead`, `latencyHint`) | First real voice (v0.2). Knobs documented in the `context.ts` header. |
+| `ARCHITECTURE.md` audio section | Phase 10 owns developer docs. Rules live in the `context.ts` header for now. |
+
+### What this unblocks
+
+**Phase 7 (`createParamStore`)** plugs directly in: `playTestTone()`'s `440` becomes a frequency param store; a `Knob`/`Slider` in `InstrumentPanel` writes it, a `Stage` readout reads it, and turning the knob while the tone holds changes pitch live. At that point the "Test tone (will be removed)" button is removed — as its label promises — and replaced by the real bound control.
 
 ---
 
