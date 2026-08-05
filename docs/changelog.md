@@ -1,9 +1,52 @@
 # Chaos Tone — Changelog
 
+- [0.1.4 — Param Store Foundation](#014--param-store-foundation-2026-08-05)
 - [0.1.3 — Audio Proof-of-Life](#013--audio-proof-of-life-2026-06-11)
 - [0.1.2 — Design Tokens & Primitives](#012--design-tokens--primitives-2026-05-18)
 - [0.1.1 — Routing & Layout Shell](#011--routing--layout-shell-2026-05-18)
 - [0.1.0 — Scaffolding](#010--scaffolding-2026-05-18)
+
+---
+
+## 0.1.4 — Param Store Foundation (2026-08-05)
+
+Phase 7 of the [scaffolding plan](./executing/scaffolding-plan.md) — State Foundation: `createParamStore`, and the **final phase on the stateless v1 critical path** (1 → 2 → 3 → 6 → 7). The "stores are the contract" pattern now runs end-to-end: one `frequencyStore` (110–880 Hz, log curve) is written by a new audio-grade **Knob** in the Instrument panel, read by a live readout in the Stage, and followed by the Tone.js voice's `frequency` signal via a declarative `bindTo()` — hold the tone, turn the knob, and the pitch glides in real time with zero "sync UI to audio" code. The **"Test tone (will be removed)" button was removed** as its label promised, replaced by a Play tone / Stop tone toggle beside the knob. Full what/where/why record in [`docs/completions/phase-7-completion.md`](./completions/phase-7-completion.md).
+
+### What landed
+
+**Param store factory** — `src/lib/stores/create-param-store.svelte.ts` (first occupant of `$stores`): rune-backed clamped `value`, curve-aware `normalized` 0..1 space (`'linear'` / `'log'`), `reset()`, `format()`, and `bindTo(toneParam, { ramp })` → unbind. The header comment is the "How to add a new param" recipe (Phase 10 lifts it into `ARCHITECTURE.md`). Audio pushes go through a plain synchronous listener set — not `$effect` — so a knob gesture reaches Tone inside the setter, and the store stays testable in a plain Node environment. `src/lib/stores/instrument-params.ts` declares the first store: `frequencyStore` (A2–A5, default A4, log curve so octaves are evenly spaced across the sweep).
+
+**Knob primitive** — `src/lib/components/ui/Knob.svelte`, the audio-grade rotary control promised since Phase 3. 270° SVG sweep (track arc, accent value arc, indicator). Vertical drag with pointer capture (Shift = 10× fine, applied per-delta so mid-drag toggles don't jump), wheel (manually attached non-passive — Svelte 5's `onwheel` is passive, which would break `preventDefault`), full keyboard map (arrows / PgUp / PgDn / Home / End), double-click reset, complete `role="slider"` ARIA. Takes the `ParamStore` itself (`<Knob param={frequencyStore} />`) rather than duplicating `value`/`min`/`max` props that could drift from the store's range.
+
+**Voice** — `src/lib/audio/voice.ts` replaces the deleted `test-tone.ts`. `startVoice()` / `stopVoice()` hold and release the sine (`triggerAttack`/`triggerRelease` — a 200 ms one-shot can't demo live pitch change); first use creates the module-scoped synth and binds `frequencyStore` to `synth.frequency` once for its lifetime (initial push is a direct set; every later write ramps 20 ms to kill zipper noise). Same lazy rules as `context.ts`, which is untouched.
+
+**Wiring** — `InstrumentPanel` gains the Knob + "Freq" label + Play tone / Stop tone toggle (with the Phase 6 inline `role="alert"` error pattern); `Stage`'s "silent" placeholder became the live `440 Hz` readout; `TransportBar` dropped the test-tone button, handler, and audio imports (Rec/Play/Stop stay reserved for real transport).
+
+**Tests** — 10 new unit tests for the factory (clamping, curves, the log `min > 0` guard, bindTo push/ramp/unbind semantics); suite now 12 passing.
+
+### Notable decisions & why
+
+- **Listener-set `bindTo`, not `$effect`** — synchronous audio pushes (no effect-flush latency) and Node-testability (server-compiled effects never run). UI reactivity still comes from `$state`; hence the one justified `eslint-disable svelte/prefer-svelte-reactivity` on the deliberately non-reactive Set.
+- **Kebab-case `.svelte.ts` filename** — runes require the extension; the plan's own §3 conventions require the kebab-case (its example is literally `create-param-store.ts`), overriding the task line's `createParamStore.ts`.
+- **The store owns the perceptual curve** — `normalized` is the shared gesture space, so knob, future 3D controls, and the randomness engine agree on what "halfway" means; factory throws on `log` with `min <= 0`.
+- **No step/quantization in v1** — snapping stalls fine gestures at the bottom of a log range; `format()`/`aria-valuenow` round for display, the value stays float. Musical quantization ships with real voices.
+- **Voice trigger lives in the Instrument panel, not the Transport bar** — Rec/Play/Stop are reserved for sketch transport; overloading them would burn the exact affordance a later phase needs.
+
+### Verified by
+
+```
+pnpm lint     # prettier --check . && eslint .   →  clean
+pnpm check    # svelte-kit sync && svelte-check  →  4680 FILES 0 ERRORS 0 WARNINGS
+pnpm test     # vitest run                       →  12 passed (3 files)
+pnpm build    # vite build                       →  ✓ built in 2.02s, no SSR crash
+pnpm dev      # live probes                      →  200 × all five Alpha routes
+```
+
+SSR HTML renders the knob (`aria-valuetext="440 Hz"`), the Stage readout, and the Play tone button, with "Test tone" gone. The Phase 6 code-split still holds: Tone remains its own 340 kB chunk, referenced exactly once as a dynamic `import()`, never statically. Store → param pushes are unit-proven (`rampTo(550, 0.02)`), not just eyeballed. Flagged for human ears: the hold-and-turn pitch glide, knob feel, keyboard/VoiceOver pass, Chrome/Firefox/Safari.
+
+### What this unblocks
+
+**The v1 critical path is complete.** Phase 8 (Threlte) can make its first mesh *reactive* by reading `frequencyStore.normalized` exactly as Stage does; Phases 9–10 (deploy, docs) close out v0.1; and v0.2 product work starts from a working contract — real voices declare param stores, the Box of Randomness mutates stores (audio + visuals follow for free), and "save a sketch" is "snapshot the stores."
 
 ---
 
