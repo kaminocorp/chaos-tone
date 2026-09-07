@@ -8,4 +8,4 @@ See docs/vision-virtual-dj.md and virtual-dj-v0-smoke.md.
 - [x] Placeholder Tone.js deck + Start UI
 - [x] HTTP JSON tools
 - [x] Smoke doc + changelog
-- [ ] check / test / build verified on Mini
+- [x] check / test / build verified on Mini
