@@ -63,6 +63,7 @@ let pendingSession: DjSession | null = null;
 let currentSession: DjSession | null = null;
 let onBar: ((bar: number) => void) | null = null;
 let patternsArmed = false;
+let lastArmedKey: string | null = null;
 
 function disposeGraph(): void {
 	for (const loop of loops) {
@@ -75,6 +76,7 @@ function disposeGraph(): void {
 	}
 	loops = [];
 	patternsArmed = false;
+	lastArmedKey = null;
 
 	for (const d of disposables) {
 		try {
@@ -193,6 +195,7 @@ function clearPatterns(): void {
 	}
 	loops = [];
 	patternsArmed = false;
+	lastArmedKey = null;
 }
 
 function armPatterns(session: DjSession): void {
@@ -259,6 +262,7 @@ function armPatterns(session: DjSession): void {
 	loops.push(fxLoop);
 
 	patternsArmed = true;
+	lastArmedKey = session.key;
 }
 
 function effectiveMute(session: DjSession, id: RoleId): boolean {
@@ -299,7 +303,20 @@ function applyNow(session: DjSession): void {
 		chain.filter.frequency.rampTo(cutoff, 0.15);
 	}
 
-	if (!patternsArmed) armPatterns(session);
+	if (!patternsArmed || lastArmedKey !== session.key) {
+		clearPatterns();
+		armPatterns(session);
+	}
+
+	// Paused: silence gains (transport may keep ticking for bar sync).
+	// Idle still plays when the user has Start deck — session_stop is soft.
+	if (session.phase === 'paused') {
+		for (const id of ROLE_IDS) {
+			const chain = chains[id];
+			if (chain) chain.gain.gain.rampTo(0, 0.08);
+		}
+		master.gain.rampTo(0.05, 0.1);
+	}
 
 	lastAppliedRevision = session.revision;
 	pendingSession = null;

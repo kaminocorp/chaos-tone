@@ -2,6 +2,8 @@
 
 Local (Mac Mini) and Vercel checks for the agent loop. Placeholders may sound cheap; they must **respond**.
 
+**Morning path:** see [virtual-dj-morning-playbook.md](./virtual-dj-morning-playbook.md).
+
 ## Prerequisites
 
 1. `cd` to chaos-tone, branch `feat/virtual-dj-v0-2-loop`
@@ -52,3 +54,10 @@ After Start deck on Mini system default out:
 4. POST /api/dj/transition with bars 8 — audible energy dip / break duck on bright roles.
 
 CAS and idempotency checks from weekend v0 still apply. Further verbs wait for Slice B.
+
+## Morning extras
+
+- POST /api/dj/intent {text, if_revision?, client_op_id?}
+- POST /api/dj/drop, /break, /emergency-stop, /bpm, /key, /phase
+- POST /api/dj/session/stop, /pause; /role/solo, /gain, /filter
+- GET /api/dj/library/search?role=kick&limit=3

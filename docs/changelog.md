@@ -1,5 +1,6 @@
 # Chaos Tone — Changelog
 
+- [0.1.7 — Virtual DJ morning verbs + intent](#017--virtual-dj-morning-verbs--intent-2026-09-08)
 - [0.1.6 — Virtual DJ Slice A musical credibility](#016--virtual-dj-slice-a-musical-credibility-2026-09-07)
 - [0.1.5 — Virtual DJ weekend v0](#015--virtual-dj-weekend-v0-2026-09-07)
 - [0.1.4 — Param Store Foundation](#014--param-store-foundation-2026-08-05)
@@ -9,6 +10,20 @@
 - [0.1.0 — Scaffolding](#010--scaffolding-2026-05-18)
 
 ---
+
+
+## 0.1.7 — Virtual DJ morning verbs + intent (2026-09-08)
+
+Morning build on feat/virtual-dj-v0-2-loop (PR #3).
+
+### What landed
+- Verbs + intent + library stub + panel + playbook + tests
+
+### Out of scope
+MCP, Ableton, auth, real WAVs.
+
+### Verified
+pnpm test/check/build on Mini.
 
 ## 0.1.6 — Virtual DJ Slice A musical credibility (2026-09-07)
 

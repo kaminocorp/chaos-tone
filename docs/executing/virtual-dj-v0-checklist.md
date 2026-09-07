@@ -15,3 +15,8 @@ See docs/vision-virtual-dj.md and virtual-dj-v0-smoke.md.
 - [x] Rhythmic deep-house placeholders
 - [x] set_energy / transition unmistakably audible
 - [x] Tests + changelog 0.1.6 + PR
+
+## Morning build
+
+- [x] Verbs + intent + library stub + panel + playbook
+- [ ] MCP (next)

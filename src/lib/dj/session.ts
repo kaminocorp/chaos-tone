@@ -7,7 +7,7 @@
 export const ROLE_IDS = ['kick', 'bass', 'hats', 'perc', 'chords', 'vox', 'fx'] as const;
 export type RoleId = (typeof ROLE_IDS)[number];
 
-export type SessionPhase = 'idle' | 'playing' | 'transition';
+export type SessionPhase = 'idle' | 'playing' | 'paused' | 'transition';
 
 export interface RoleState {
 	gain: number;
@@ -27,6 +27,8 @@ export interface DjSession {
 	roles: Record<RoleId, RoleState>;
 	/** Bar at which the latest mutation should become audible (deck-side). */
 	apply_at_bar: number;
+	/** Last natural-language intent text (panel readout). */
+	last_intent: string | null;
 }
 
 export interface MutateMeta {
@@ -67,7 +69,8 @@ function freshSession(): DjSession {
 		phase: 'idle',
 		revision: 0,
 		roles: freshRoles(),
-		apply_at_bar: 0
+		apply_at_bar: 0,
+		last_intent: null
 	};
 }
 
@@ -234,6 +237,169 @@ export function advanceBar(by = 1): DjSession {
 		session.phase = 'playing';
 	}
 	return cloneSession(session);
+}
+
+
+export function setBpm(bpm: number, meta: MutateMeta = {}): MutateResult {
+	if (!Number.isFinite(bpm) || bpm < 60 || bpm > 200) {
+		return { ok: false, status: 400, error: 'bpm must be 60..200' };
+	}
+	const replay = checkIdempotent(meta);
+	if (replay) return replay;
+	const conflict = checkCas(meta);
+	if (conflict) return conflict;
+
+	session.bpm = Math.round(bpm * 10) / 10;
+	return commit(meta, 1);
+}
+
+export function setKey(key: string, meta: MutateMeta = {}): MutateResult {
+	if (typeof key !== 'string' || key.trim().length === 0 || key.length > 16) {
+		return { ok: false, status: 400, error: 'key must be a short string (e.g. Am, F#m)' };
+	}
+	const replay = checkIdempotent(meta);
+	if (replay) return replay;
+	const conflict = checkCas(meta);
+	if (conflict) return conflict;
+
+	session.key = key.trim();
+	return commit(meta, 1);
+}
+
+export function setPhase(phase: string, meta: MutateMeta = {}): MutateResult {
+	const allowed: SessionPhase[] = ['idle', 'playing', 'paused', 'transition'];
+	if (!allowed.includes(phase as SessionPhase)) {
+		return { ok: false, status: 400, error: `phase must be one of ${allowed.join('|')}` };
+	}
+	const replay = checkIdempotent(meta);
+	if (replay) return replay;
+	const conflict = checkCas(meta);
+	if (conflict) return conflict;
+
+	session.phase = phase as SessionPhase;
+	return commit(meta, 1);
+}
+
+export function soloRole(role: string, solo: boolean, meta: MutateMeta = {}): MutateResult {
+	if (!ROLE_IDS.includes(role as RoleId)) {
+		return { ok: false, status: 400, error: `unknown role: ${role}` };
+	}
+	const replay = checkIdempotent(meta);
+	if (replay) return replay;
+	const conflict = checkCas(meta);
+	if (conflict) return conflict;
+
+	session.roles[role as RoleId].solo = solo;
+	return commit(meta, 1);
+}
+
+export function setRoleGain(role: string, gain: number, meta: MutateMeta = {}): MutateResult {
+	if (!ROLE_IDS.includes(role as RoleId)) {
+		return { ok: false, status: 400, error: `unknown role: ${role}` };
+	}
+	if (!Number.isFinite(gain) || gain < 0 || gain > 1) {
+		return { ok: false, status: 400, error: 'gain must be 0..1' };
+	}
+	const replay = checkIdempotent(meta);
+	if (replay) return replay;
+	const conflict = checkCas(meta);
+	if (conflict) return conflict;
+
+	session.roles[role as RoleId].gain = gain;
+	return commit(meta, 1);
+}
+
+export function setRoleFilter(role: string, filter: number, meta: MutateMeta = {}): MutateResult {
+	if (!ROLE_IDS.includes(role as RoleId)) {
+		return { ok: false, status: 400, error: `unknown role: ${role}` };
+	}
+	if (!Number.isFinite(filter) || filter < 0 || filter > 1) {
+		return { ok: false, status: 400, error: 'filter must be 0..1' };
+	}
+	const replay = checkIdempotent(meta);
+	if (replay) return replay;
+	const conflict = checkCas(meta);
+	if (conflict) return conflict;
+
+	session.roles[role as RoleId].filter = filter;
+	return commit(meta, 1);
+}
+
+export function sessionStop(meta: MutateMeta = {}): MutateResult {
+	const replay = checkIdempotent(meta);
+	if (replay) return replay;
+	const conflict = checkCas(meta);
+	if (conflict) return conflict;
+
+	session.phase = 'idle';
+	return commit(meta, 1);
+}
+
+export function sessionPause(meta: MutateMeta = {}): MutateResult {
+	const replay = checkIdempotent(meta);
+	if (replay) return replay;
+	const conflict = checkCas(meta);
+	if (conflict) return conflict;
+
+	session.phase = 'paused';
+	return commit(meta, 1);
+}
+
+/** Kill switch: mute all roles, idle, energy floor. */
+export function emergencyStop(meta: MutateMeta = {}): MutateResult {
+	const replay = checkIdempotent(meta);
+	if (replay) return replay;
+	const conflict = checkCas(meta);
+	if (conflict) return conflict;
+
+	session.phase = 'idle';
+	session.energy = 0;
+	for (const id of ROLE_IDS) {
+		session.roles[id].mute = true;
+		session.roles[id].gain = 0;
+		session.roles[id].solo = false;
+	}
+	return commit(meta, 1);
+}
+
+/** Peak: bright energy lift + open filters (audible drop). */
+export function drop(meta: MutateMeta = {}): MutateResult {
+	const replay = checkIdempotent(meta);
+	if (replay) return replay;
+	const conflict = checkCas(meta);
+	if (conflict) return conflict;
+
+	const target = Math.min(1, Math.max(0.85, session.energy + 0.35));
+	applyEnergyToRoles(session, target);
+	session.roles.hats.mute = false;
+	session.roles.perc.mute = false;
+	session.roles.fx.mute = false;
+	session.roles.kick.mute = false;
+	session.roles.bass.mute = false;
+	session.phase = 'playing';
+	return commit(meta, 1);
+}
+
+/** Break: duck bright roles, dip energy (like a short transition). */
+export function breakDown(meta: MutateMeta = {}): MutateResult {
+	const replay = checkIdempotent(meta);
+	if (replay) return replay;
+	const conflict = checkCas(meta);
+	if (conflict) return conflict;
+
+	session.phase = 'transition';
+	const dipped = Math.max(0.05, session.energy * 0.35);
+	applyEnergyToRoles(session, dipped);
+	session.roles.hats.gain = Math.min(session.roles.hats.gain, 0.12);
+	session.roles.perc.gain = Math.min(session.roles.perc.gain, 0.1);
+	session.roles.fx.gain = Math.min(session.roles.fx.gain, 0.08);
+	session.roles.kick.gain = Math.min(session.roles.kick.gain, 0.35);
+	return commit(meta, 1);
+}
+
+/** Record last intent text without bumping revision (panel only). */
+export function recordLastIntent(text: string): void {
+	session.last_intent = text.slice(0, 200);
 }
 
 export function isRoleId(value: string): value is RoleId {

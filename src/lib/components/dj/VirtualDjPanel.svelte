@@ -78,16 +78,21 @@
 	aria-label="Virtual DJ"
 >
 	<div class="flex flex-wrap items-center justify-between gap-2">
-		<div class="flex flex-col gap-0.5">
+		<div class="flex min-w-0 flex-col gap-0.5">
 			<div class="text-ink-500 font-mono text-[10px] tracking-widest uppercase">Virtual DJ v0.2</div>
 			<div class="font-mono text-xs tabular-nums">
 				{#if session}
-					{session.bpm} BPM · {session.key} · E {session.energy.toFixed(2)} · bar {session.bar}
-					(local {localBar}) · rev {session.revision} · {session.phase}
+					E {session.energy.toFixed(2)} · rev {session.revision} · {session.bpm} BPM · {session.key} ·
+					bar {session.bar}/{localBar} · {session.phase}
 				{:else}
 					polling session…
 				{/if}
 			</div>
+			{#if session?.last_intent}
+				<div class="text-ink-400 truncate font-mono text-[10px]" title={session.last_intent}>
+					intent: {session.last_intent}
+				</div>
+			{/if}
 		</div>
 		<div class="flex items-center gap-2">
 			<Button variant="primary" size="sm" onclick={handleStart} aria-pressed={deckOn}>
@@ -101,8 +106,12 @@
 	{#if session}
 		<div class="text-ink-500 mt-1 flex flex-wrap gap-2 font-mono text-[10px] tracking-wider uppercase">
 			{#each Object.entries(session.roles) as [role, state] (role)}
-				<span class="border-ink-700 rounded border px-1.5 py-0.5 {state.mute ? 'opacity-40' : ''}">
-					{role}{state.mute ? ' mute' : ''}
+				<span
+					class="border-ink-700 rounded border px-1.5 py-0.5 {state.mute
+						? 'opacity-40'
+						: ''} {state.solo ? 'border-accent-500 text-accent-400' : ''}"
+				>
+					{role}{state.mute ? ' mute' : ''}{state.solo ? ' solo' : ''}
 				</span>
 			{/each}
 		</div>
