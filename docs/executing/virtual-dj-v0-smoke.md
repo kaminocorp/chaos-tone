@@ -4,7 +4,7 @@ Local (Mac Mini) and Vercel checks for the agent loop. Placeholders may sound ch
 
 ## Prerequisites
 
-1. `cd` to chaos-tone, branch `feat/virtual-dj-vision`
+1. `cd` to chaos-tone, branch `feat/virtual-dj-v0-2-loop`
 2. Install deps and start the dev server
 3. Open the Vite URL and click **Start deck** once (user gesture → Tone.start)
 
@@ -41,3 +41,14 @@ Local (Mac Mini) and Vercel checks for the agent loop. Placeholders may sound ch
 - Energy change heard within 1–2 bars
 - Stale revision returns 409
 - check / test / build clean
+
+## Slice A (v0.2) listen test
+
+After Start deck on Mini system default out:
+
+1. POST /api/dj/session/start
+2. POST /api/dj/energy with energy 0.15 (matching if_revision) — within 1-2 bars: darker, quieter, closed filter, hats/perc ducked.
+3. POST /api/dj/energy with energy 0.85 — unmistakable open/bright lift.
+4. POST /api/dj/transition with bars 8 — audible energy dip / break duck on bright roles.
+
+CAS and idempotency checks from weekend v0 still apply. Further verbs wait for Slice B.

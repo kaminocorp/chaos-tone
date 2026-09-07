@@ -1,5 +1,6 @@
 # Chaos Tone — Changelog
 
+- [0.1.6 — Virtual DJ Slice A musical credibility](#016--virtual-dj-slice-a-musical-credibility-2026-09-07)
 - [0.1.5 — Virtual DJ weekend v0](#015--virtual-dj-weekend-v0-2026-09-07)
 - [0.1.4 — Param Store Foundation](#014--param-store-foundation-2026-08-05)
 - [0.1.3 — Audio Proof-of-Life](#013--audio-proof-of-life-2026-06-11)
@@ -8,6 +9,25 @@
 - [0.1.0 — Scaffolding](#010--scaffolding-2026-05-18)
 
 ---
+
+## 0.1.6 — Virtual DJ Slice A musical credibility (2026-09-07)
+
+Tighten weekend v0 so energy and transition are unmistakably audible within 1-2 bars. Rhythmic deep-house placeholders replace continuous drones. No new HTTP verbs in this PR.
+
+### What landed
+
+- Rhythmic deck in src/lib/dj/deck.ts: Transport-scheduled kick, hats, bass, chords, sparse perc/vox/fx. Master gain plus LPF track energy.
+- Stronger set_energy via applyEnergyToRoles: wide filter and role-gain gap so 0.15 vs 0.85 is obvious.
+- Audible transition(bars): dips energy about 0.4x floor 0.05 and ducks hats/perc/fx.
+- Tests expanded in session.test.ts; smoke doc notes Slice A listen criteria.
+
+### Out of scope
+
+Further verbs and natural-language mapping wait for later slices.
+
+### Verified
+
+Verified on Mini with test check and build.
 
 ## 0.1.5 — Virtual DJ weekend v0 (2026-09-07)
 
