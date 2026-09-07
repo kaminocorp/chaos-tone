@@ -139,6 +139,29 @@ export function sessionStart(meta: MutateMeta = {}): MutateResult {
 	return commit(meta, 1);
 }
 
+/**
+ * Apply energy → role balance + filter darkness so 0.15 vs 0.85 is obvious.
+ * Pure mapping used by setEnergy (and tests).
+ */
+export function applyEnergyToRoles(s: DjSession, energy: number): void {
+	s.energy = energy;
+	// Closed filters when dark; open when bright (melodic / high roles).
+	for (const id of ['bass', 'chords', 'hats', 'vox', 'fx'] as RoleId[]) {
+		s.roles[id].filter = 0.06 + energy * 0.82;
+	}
+	s.roles.kick.filter = 0.35 + energy * 0.35;
+	s.roles.perc.filter = 0.1 + energy * 0.75;
+
+	// Role balance: dark = kick+bass+soft pad; bright = hats/perc/fx/vox up.
+	s.roles.kick.gain = 0.88;
+	s.roles.bass.gain = 0.72 + energy * 0.2;
+	s.roles.chords.gain = 0.45 + energy * 0.4;
+	s.roles.hats.gain = 0.18 + energy * 0.78;
+	s.roles.perc.gain = 0.12 + energy * 0.75;
+	s.roles.vox.gain = 0.15 + energy * 0.6;
+	s.roles.fx.gain = 0.08 + energy * 0.72;
+}
+
 export function setEnergy(energy: number, meta: MutateMeta = {}): MutateResult {
 	if (!Number.isFinite(energy) || energy < 0 || energy > 1) {
 		return { ok: false, status: 400, error: 'energy must be 0..1' };
@@ -148,11 +171,7 @@ export function setEnergy(energy: number, meta: MutateMeta = {}): MutateResult {
 	const conflict = checkCas(meta);
 	if (conflict) return conflict;
 
-	session.energy = energy;
-	// Darker = lower filter on melodic roles (placeholder character).
-	for (const id of ['bass', 'chords', 'hats', 'vox'] as RoleId[]) {
-		session.roles[id].filter = 0.2 + energy * 0.6;
-	}
+	applyEnergyToRoles(session, energy);
 	return commit(meta, 1);
 }
 
@@ -199,8 +218,12 @@ export function transition(bars: number, meta: MutateMeta = {}): MutateResult {
 	if (conflict) return conflict;
 
 	session.phase = 'transition';
-	// Soft energy dip during transition (deep-house break feel).
-	session.energy = Math.max(0, session.energy * 0.7);
+	// Audible break: strong energy dip + duck bright roles (hats/perc/fx).
+	const dipped = Math.max(0.05, session.energy * 0.4);
+	applyEnergyToRoles(session, dipped);
+	session.roles.hats.gain = Math.min(session.roles.hats.gain, 0.2);
+	session.roles.perc.gain = Math.min(session.roles.perc.gain, 0.15);
+	session.roles.fx.gain = Math.min(session.roles.fx.gain, 0.1);
 	return commit({ ...meta, bars }, bars);
 }
 

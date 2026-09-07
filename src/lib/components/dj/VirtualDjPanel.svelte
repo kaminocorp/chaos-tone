@@ -79,7 +79,7 @@
 >
 	<div class="flex flex-wrap items-center justify-between gap-2">
 		<div class="flex flex-col gap-0.5">
-			<div class="text-ink-500 font-mono text-[10px] tracking-widest uppercase">Virtual DJ v0</div>
+			<div class="text-ink-500 font-mono text-[10px] tracking-widest uppercase">Virtual DJ v0.2</div>
 			<div class="font-mono text-xs tabular-nums">
 				{#if session}
 					{session.bpm} BPM · {session.key} · E {session.energy.toFixed(2)} · bar {session.bar}

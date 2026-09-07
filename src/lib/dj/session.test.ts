@@ -7,7 +7,8 @@ import {
 	swapRole,
 	muteRole,
 	transition,
-	advanceBar
+	advanceBar,
+	applyEnergyToRoles
 } from './session';
 
 beforeEach(() => {
@@ -103,5 +104,51 @@ describe('dj session store', () => {
 		const after = advanceBar(4);
 		expect(after.bar).toBe(getSession().bar);
 		expect(after.bar).toBeGreaterThanOrEqual(5);
+	});
+
+	it('set_energy maps dark vs bright with wide filter and role-gain gap', () => {
+		sessionStart();
+		const dark = setEnergy(0.15, { if_revision: 1 });
+		expect(dark.ok).toBe(true);
+		if (!dark.ok) return;
+		expect(dark.session.energy).toBe(0.15);
+		expect(dark.session.roles.hats.filter).toBeLessThan(0.25);
+		expect(dark.session.roles.hats.gain).toBeLessThan(0.4);
+		expect(dark.session.roles.fx.gain).toBeLessThan(0.3);
+
+		const bright = setEnergy(0.85, { if_revision: dark.session.revision });
+		expect(bright.ok).toBe(true);
+		if (!bright.ok) return;
+		expect(bright.session.energy).toBe(0.85);
+		expect(bright.session.roles.hats.filter).toBeGreaterThan(0.65);
+		expect(bright.session.roles.hats.gain).toBeGreaterThan(0.7);
+		expect(bright.session.roles.hats.gain - dark.session.roles.hats.gain).toBeGreaterThan(0.4);
+		expect(bright.session.roles.chords.filter - dark.session.roles.chords.filter).toBeGreaterThan(
+			0.4
+		);
+	});
+
+	it('transition audibly dips energy and ducks bright roles', () => {
+		sessionStart();
+		setEnergy(0.8, { if_revision: 1 });
+		const before = getSession();
+		const t = transition(8, { if_revision: before.revision });
+		expect(t.ok).toBe(true);
+		if (!t.ok) return;
+		expect(t.session.phase).toBe('transition');
+		expect(t.session.energy).toBeLessThan(before.energy * 0.5);
+		expect(t.session.energy).toBeLessThanOrEqual(0.35);
+		expect(t.session.roles.hats.gain).toBeLessThanOrEqual(0.2);
+		expect(t.session.apply_at_bar).toBe(before.bar + 8);
+	});
+
+	it('applyEnergyToRoles is monotonic across the energy range', () => {
+		const low = getSession();
+		applyEnergyToRoles(low, 0.1);
+		const high = getSession();
+		applyEnergyToRoles(high, 0.9);
+		expect(high.roles.hats.gain).toBeGreaterThan(low.roles.hats.gain);
+		expect(high.roles.fx.filter).toBeGreaterThan(low.roles.fx.filter);
+		expect(high.roles.bass.filter).toBeGreaterThan(low.roles.bass.filter);
 	});
 });
