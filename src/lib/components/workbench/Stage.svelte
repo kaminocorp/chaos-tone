@@ -1,5 +1,6 @@
 <script lang="ts">
 	import { frequencyStore } from '$stores/instrument-params';
+	import VirtualDjPanel from '$lib/components/dj/VirtualDjPanel.svelte';
 </script>
 
 <section
@@ -21,4 +22,5 @@
 		<span class="border-ink-700 rounded border px-1.5 py-0.5">2D</span>
 		<span class="rounded border border-transparent px-1.5 py-0.5">3D</span>
 	</div>
+	<VirtualDjPanel />
 </section>
