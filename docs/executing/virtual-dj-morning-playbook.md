@@ -82,5 +82,5 @@ curl -s "http://localhost:5173/api/dj/library/search?role=kick&limit=3" | jq .
 
 Use POST /api/dj/emergency-stop with if_revision + client_op_id. All roles mute, energy 0. Then Stop deck.
 
-## 7. Green checks
-out-of-scope-next-MCP
+## 7. Checks + out of scope
+Out of scope next: MCP Ableton auth real WAVs.
