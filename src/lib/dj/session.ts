@@ -1,0 +1,218 @@
+// src/lib/dj/session.ts
+//
+// Virtual DJ weekend v0 — in-memory session store (server-safe plain TS).
+// Agent HTTP tools mutate this module; the browser polls and drives Tone.js.
+// No persistence, auth, or Ableton. Revision CAS + client_op_id idempotency.
+
+export const ROLE_IDS = ['kick', 'bass', 'hats', 'perc', 'chords', 'vox', 'fx'] as const;
+export type RoleId = (typeof ROLE_IDS)[number];
+
+export type SessionPhase = 'idle' | 'playing' | 'transition';
+
+export interface RoleState {
+	gain: number;
+	mute: boolean;
+	solo: boolean;
+	filter: number;
+	stemId: string | null;
+}
+
+export interface DjSession {
+	bpm: number;
+	key: string;
+	energy: number;
+	bar: number;
+	phase: SessionPhase;
+	revision: number;
+	roles: Record<RoleId, RoleState>;
+	/** Bar at which the latest mutation should become audible (deck-side). */
+	apply_at_bar: number;
+}
+
+export interface MutateMeta {
+	if_revision?: number;
+	client_op_id?: string;
+	/** Bars until audible apply; default 1 (next bar). */
+	bars?: number;
+}
+
+export type MutateOk = { ok: true; session: DjSession; replayed: boolean };
+export type MutateConflict = {
+	ok: false;
+	status: 409;
+	error: string;
+	session: DjSession;
+};
+export type MutateBadRequest = { ok: false; status: 400; error: string };
+export type MutateResult = MutateOk | MutateConflict | MutateBadRequest;
+
+function defaultRole(): RoleState {
+	return { gain: 0.8, mute: false, solo: false, filter: 0.5, stemId: null };
+}
+
+function freshRoles(): Record<RoleId, RoleState> {
+	const roles = {} as Record<RoleId, RoleState>;
+	for (const id of ROLE_IDS) {
+		roles[id] = defaultRole();
+	}
+	return roles;
+}
+
+function freshSession(): DjSession {
+	return {
+		bpm: 122,
+		key: 'Am',
+		energy: 0.5,
+		bar: 0,
+		phase: 'idle',
+		revision: 0,
+		roles: freshRoles(),
+		apply_at_bar: 0
+	};
+}
+
+/** Snapshot for idempotent replays (deep enough for v0 role tree). */
+function cloneSession(s: DjSession): DjSession {
+	return {
+		...s,
+		roles: Object.fromEntries(
+			ROLE_IDS.map((id) => [id, { ...s.roles[id] }])
+		) as Record<RoleId, RoleState>
+	};
+}
+
+let session: DjSession = freshSession();
+
+/** client_op_id → last successful result session snapshot */
+const idempotency = new Map<string, DjSession>();
+
+export function resetSessionStoreForTests(): void {
+	session = freshSession();
+	idempotency.clear();
+}
+
+export function getSession(): DjSession {
+	return cloneSession(session);
+}
+
+function checkCas(meta: MutateMeta): MutateConflict | null {
+	if (meta.if_revision !== undefined && meta.if_revision !== session.revision) {
+		return {
+			ok: false,
+			status: 409,
+			error: `revision conflict: expected ${meta.if_revision}, have ${session.revision}`,
+			session: cloneSession(session)
+		};
+	}
+	return null;
+}
+
+function checkIdempotent(meta: MutateMeta): MutateOk | null {
+	if (meta.client_op_id) {
+		const prev = idempotency.get(meta.client_op_id);
+		if (prev) {
+			return { ok: true, session: cloneSession(prev), replayed: true };
+		}
+	}
+	return null;
+}
+
+function commit(meta: MutateMeta, barsDefault = 1): MutateOk {
+	const bars = meta.bars ?? barsDefault;
+	session.revision += 1;
+	session.apply_at_bar = session.bar + Math.max(1, bars);
+	const snap = cloneSession(session);
+	if (meta.client_op_id) {
+		idempotency.set(meta.client_op_id, snap);
+	}
+	return { ok: true, session: snap, replayed: false };
+}
+
+export function sessionStart(meta: MutateMeta = {}): MutateResult {
+	const replay = checkIdempotent(meta);
+	if (replay) return replay;
+	const conflict = checkCas(meta);
+	if (conflict) return conflict;
+
+	session.phase = 'playing';
+	if (session.bar < 1) session.bar = 1;
+	return commit(meta, 1);
+}
+
+export function setEnergy(energy: number, meta: MutateMeta = {}): MutateResult {
+	if (!Number.isFinite(energy) || energy < 0 || energy > 1) {
+		return { ok: false, status: 400, error: 'energy must be 0..1' };
+	}
+	const replay = checkIdempotent(meta);
+	if (replay) return replay;
+	const conflict = checkCas(meta);
+	if (conflict) return conflict;
+
+	session.energy = energy;
+	// Darker = lower filter on melodic roles (placeholder character).
+	for (const id of ['bass', 'chords', 'hats', 'vox'] as RoleId[]) {
+		session.roles[id].filter = 0.2 + energy * 0.6;
+	}
+	return commit(meta, 1);
+}
+
+export function swapRole(
+	role: string,
+	stemId: string | null,
+	meta: MutateMeta = {}
+): MutateResult {
+	if (!ROLE_IDS.includes(role as RoleId)) {
+		return { ok: false, status: 400, error: `unknown role: ${role}` };
+	}
+	const replay = checkIdempotent(meta);
+	if (replay) return replay;
+	const conflict = checkCas(meta);
+	if (conflict) return conflict;
+
+	const id = role as RoleId;
+	session.roles[id].stemId = stemId;
+	// Placeholder: bump gain slightly so swap is audible even without WAVs.
+	session.roles[id].gain = Math.min(1, Math.max(0.4, session.roles[id].gain + 0.05));
+	return commit(meta, 1);
+}
+
+export function muteRole(role: string, mute: boolean, meta: MutateMeta = {}): MutateResult {
+	if (!ROLE_IDS.includes(role as RoleId)) {
+		return { ok: false, status: 400, error: `unknown role: ${role}` };
+	}
+	const replay = checkIdempotent(meta);
+	if (replay) return replay;
+	const conflict = checkCas(meta);
+	if (conflict) return conflict;
+
+	session.roles[role as RoleId].mute = mute;
+	return commit(meta, 1);
+}
+
+export function transition(bars: number, meta: MutateMeta = {}): MutateResult {
+	if (!Number.isFinite(bars) || bars < 1 || bars > 64) {
+		return { ok: false, status: 400, error: 'bars must be 1..64' };
+	}
+	const replay = checkIdempotent(meta);
+	if (replay) return replay;
+	const conflict = checkCas(meta);
+	if (conflict) return conflict;
+
+	session.phase = 'transition';
+	// Soft energy dip during transition (deep-house break feel).
+	session.energy = Math.max(0, session.energy * 0.7);
+	return commit({ ...meta, bars }, bars);
+}
+
+/** Advance the session bar (called by deck heartbeat / smoke). */
+export function advanceBar(by = 1): DjSession {
+	session.bar += by;
+	if (session.phase === 'transition' && session.bar >= session.apply_at_bar) {
+		session.phase = 'playing';
+	}
+	return cloneSession(session);
+}
+
+export function isRoleId(value: string): value is RoleId {
+	return ROLE_IDS.includes(value as RoleId);
+}
