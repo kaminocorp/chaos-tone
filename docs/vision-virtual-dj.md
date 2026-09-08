@@ -139,11 +139,13 @@ Genre focus for first library and placeholder character: **deep house**.
 
 ## Definition of done (v0)
 
-- [ ] Dev session runs on Mac Mini with system default audio out
-- [ ] HTTP agent can start a session and read revision/state
-- [ ] “Take it darker” produces an audible change within 1–2 bars
-- [ ] Concurrent agents conflict via 409 on stale revision, not silent overwrite
-- [ ] PR open for Phil review; vision + scaffold documented
+- [x] Dev session runs on Mac Mini with system default audio out (weekend v0 scaffold)
+- [x] HTTP agent can start a session and read revision/state
+- [x] "Take it darker" produces an audible change within 1-2 bars (Slice A: rhythmic placeholders + tightened energy/transition)
+- [x] Concurrent agents conflict via 409 on stale revision, not silent overwrite
+- [x] PR open for Phil review; vision + scaffold documented
+
+Slice A (musical credibility) checked above. Slice B (extra verbs) and later bridge work remain open.
 
 ---
 
