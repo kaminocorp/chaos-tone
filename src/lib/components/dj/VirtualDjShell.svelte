@@ -52,7 +52,7 @@
 	const plaqueMusical = $derived(plaquePhase(run, session));
 	const breakLike = $derived(musicalPhase === 'break');
 
-	function adopt(next?: DjSession) {
+	function adopt(next?: DjSession | null) {
 		if (!next) return;
 		session = next;
 		if (deckOn) applySession(next);
