@@ -1,5 +1,6 @@
 # Chaos Tone — Changelog
 
+- [0.1.8 — Virtual DJ MCP bridge](#018--virtual-dj-mcp-bridge-2026-09-08)
 - [0.1.7 — Virtual DJ morning verbs + intent](#017--virtual-dj-morning-verbs--intent-2026-09-08)
 - [0.1.6 — Virtual DJ Slice A musical credibility](#016--virtual-dj-slice-a-musical-credibility-2026-09-07)
 - [0.1.5 — Virtual DJ weekend v0](#015--virtual-dj-weekend-v0-2026-09-07)
@@ -10,6 +11,22 @@
 - [0.1.0 — Scaffolding](#010--scaffolding-2026-05-18)
 
 ---
+
+
+## 0.1.8 — Virtual DJ MCP bridge (2026-09-08)
+
+Thin stdio MCP server mirroring HTTP DJ verbs.
+
+### What landed
+- mcp/vdj client server tests and docs
+
+### Out of scope
+
+Ableton auth WAVs conductor FE deferred.
+
+### Verified
+
+MCP client mapping unit tests.
 
 
 ## 0.1.7 — Virtual DJ morning verbs + intent (2026-09-08)

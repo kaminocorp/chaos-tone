@@ -1,13 +1,13 @@
 # Virtual DJ — morning playbook (~6am SGT)
 
 Phil: exact steps to smoke the overnight build on the Mac Mini.
-Branch: `feat/virtual-dj-v0-2-loop` (PR #3). Placeholders only — no real WAVs, no MCP, no Ableton.
+Branch: `main` (Virtual DJ v0 merged). Placeholders only — no real WAVs, MCP optional via mcp:vdj.
 
 ## 1. Boot
 
 ```bash
 cd ~/kaminocorp/chaos-tone
-git checkout feat/virtual-dj-v0-2-loop
+git checkout main
 git pull
 pnpm install
 pnpm dev
@@ -82,5 +82,5 @@ curl -s "http://localhost:5173/api/dj/library/search?role=kick&limit=3" | jq .
 
 Use POST /api/dj/emergency-stop with if_revision + client_op_id. All roles mute, energy 0. Then Stop deck.
 
-## 7. Checks + out of scope
-Out of scope next: MCP Ableton auth real WAVs.
+## 7. Checks + deferred
+Deferred next: Ableton, auth, real WAVs. See virtual-dj-mcp.md and virtual-dj-next-steps.md.
