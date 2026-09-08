@@ -64,9 +64,9 @@ export function isEmergencyIntent(text: string | null | undefined): boolean {
 }
 
 function isHalted(session: DjSession): boolean {
-	if (isEmergencyIntent(session.last_intent)) return true;
 	if (session.phase !== 'idle') return false;
 	if (session.energy > 0) return false;
+	if (isEmergencyIntent(session.last_intent)) return true;
 	return Object.values(session.roles).every((role) => role.mute);
 }
 

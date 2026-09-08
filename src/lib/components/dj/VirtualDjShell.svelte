@@ -81,6 +81,26 @@
 		return true;
 	}
 
+	async function restoreAudible(from: DjSession | null | undefined): Promise<DjSession | null> {
+		let latest = from ?? null;
+		const needsRestore =
+			!latest || latest.energy === 0 || ROLE_IDS.every((id) => latest?.roles[id]?.mute);
+		if (!needsRestore || !latest) return latest;
+		const energyResult = await postEnergy(0.5, latest.revision);
+		if (!showResultError(energyResult)) return latest;
+		latest = energyResult.session ?? latest;
+		for (const role of ROLE_IDS) {
+			const muteResult = await postMute(role, false, latest?.revision);
+			if (muteResult.session) latest = muteResult.session;
+			if (!muteResult.ok) {
+				showResultError(muteResult);
+				return latest;
+			}
+		}
+		adopt(latest);
+		return latest;
+	}
+
 	async function handleStart() {
 		error = null;
 		if (!isAudioSupported()) {
@@ -92,7 +112,11 @@
 			await startDeck({ onBar: () => void syncBar() });
 			deckOn = true;
 			const started = await postSessionStart(session?.revision);
-			if (!showResultError(started)) await refresh();
+			if (!showResultError(started)) {
+				await refresh();
+				return;
+			}
+			await restoreAudible(started.session ?? session);
 			if (session) applySession(session);
 		} catch (err) {
 			error = 'Could not start DJ deck. Check the console.';
@@ -141,29 +165,12 @@
 				await startDeck({ onBar: () => void syncBar() });
 			}
 			deckOn = true;
-			let latest = session;
-			const started = await postSessionStart(latest?.revision);
+			const started = await postSessionStart(session?.revision);
 			if (!showResultError(started)) {
 				await refresh();
 				return;
 			}
-			latest = started.session ?? session;
-			const energyResult = await postEnergy(0.5, latest?.revision);
-			if (!showResultError(energyResult)) {
-				await refresh();
-				return;
-			}
-			latest = energyResult.session ?? session;
-			for (const role of ROLE_IDS) {
-				const muteResult = await postMute(role, false, latest?.revision);
-				if (muteResult.session) latest = muteResult.session;
-				if (!muteResult.ok) {
-					showResultError(muteResult);
-					await refresh();
-					return;
-				}
-			}
-			adopt(latest);
+			await restoreAudible(started.session ?? session);
 		} catch (err) {
 			error = 'Could not resume DJ deck. Check the console.';
 			console.error('[vdj] resume failed:', err);

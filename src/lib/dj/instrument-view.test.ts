@@ -108,6 +108,16 @@ describe('instrument view — four mockup run states', () => {
 		expect(activePadIds({ run: 'LIVE', session: s })).toEqual(['darker', 'break']);
 	});
 
+	it('does not stay STOPPED after a playing resume while last intent is still emergency stop', () => {
+		const s = session({
+			phase: 'playing',
+			energy: 0.5,
+			last_intent: 'emergency stop'
+		});
+		expect(runStatus({ deckStarted: true, session: s })).toBe('LIVE');
+		expect(headerPhase('LIVE', s)).toBe('groove');
+	});
+
 	it('emergency stop is STOPPED / halt with Stop pad active', () => {
 		const s = session({
 			phase: 'idle',
