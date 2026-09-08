@@ -1,6 +1,7 @@
 import { describe, it, expect, beforeEach } from 'vitest';
 import { mapIntent } from './intent';
-import { getSession, resetSessionStoreForTests, sessionStart } from './session';
+import { INTENT_PADS } from './instrument-view';
+import { getSession, resetSessionStoreForTests, sessionStart, setEnergy } from './session';
 
 beforeEach(() => {
 	resetSessionStoreForTests();
@@ -66,6 +67,33 @@ describe('mapIntent', () => {
 		const u = mapIntent('play some jazz fusion please');
 		expect(u.ok).toBe(false);
 		expect(u.verb).toBe('noop');
+	});
+
+	it('maps take it softer to lower energy (Softer pad)', () => {
+		const before = getSession().energy;
+		const r = mapIntent('take it softer', { if_revision: getSession().revision });
+		expect(r.ok).toBe(true);
+		expect(r.verb).toBe('set_energy');
+		if (!r.result || !r.result.ok) return;
+		expect(r.result.session.energy).toBeLessThan(before);
+	});
+
+	it('maps build to higher energy (Build pad)', () => {
+		setEnergy(0.4, { if_revision: getSession().revision });
+		const r = mapIntent('build', { if_revision: getSession().revision });
+		expect(r.ok).toBe(true);
+		expect(r.verb).toBe('set_energy');
+		if (!r.result || !r.result.ok) return;
+		expect(r.result.session.energy).toBeGreaterThanOrEqual(0.65);
+	});
+
+	it('maps every instrument pad text', () => {
+		for (const pad of INTENT_PADS) {
+			resetSessionStoreForTests();
+			sessionStart();
+			const r = mapIntent(pad.text, { if_revision: getSession().revision });
+			expect(r.ok, pad.text).toBe(true);
+		}
 	});
 
 	it('honors CAS on intent', () => {

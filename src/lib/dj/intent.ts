@@ -1,7 +1,7 @@
 // src/lib/dj/intent.ts
 //
 // Natural-language → session verb mapper for morning agent loop.
- // No LLM — phrase patterns only. Returns the mutate result + mapped verb.
+// No LLM — phrase patterns only. Returns the mutate result + mapped verb.
 
 import {
 	breakDown,
@@ -102,7 +102,8 @@ export function mapIntent(text: string, meta: MutateMeta = {}): IntentResult {
 	}
 
 	// BPM
-	const bpmMatch = t.match(/\b(?:bpm|tempo)\s*[:=]?\s*(\d{2,3})\b/) || t.match(/\b(\d{2,3})\s*bpm\b/);
+	const bpmMatch =
+		t.match(/\b(?:bpm|tempo)\s*[:=]?\s*(\d{2,3})\b/) || t.match(/\b(\d{2,3})\s*bpm\b/);
 	if (bpmMatch) {
 		const bpm = Number(bpmMatch[1]);
 		const result = setBpm(bpm, meta);
@@ -138,11 +139,13 @@ export function mapIntent(text: string, meta: MutateMeta = {}): IntentResult {
 	}
 
 	const darker =
-		/\b(darker|dark|deeper|moodier|closed|warm(?:er)?|take\s+it\s+down|bring\s+it\s+down|lower\s+energy|chill)\b/.test(
+		/\b(darker|dark|deeper|moodier|closed|warm(?:er)?|soft(?:er)?|take\s+it\s+down|bring\s+it\s+down|lower\s+energy|chill)\b/.test(
 			t
 		);
 	const brighter =
-		/\b(brighter|bright|open(?:er)?|lift|higher\s+energy|more\s+energy|hype|take\s+it\s+up)\b/.test(t);
+		/\b(brighter|bright|open(?:er)?|lift|build|higher\s+energy|more\s+energy|hype|take\s+it\s+up)\b/.test(
+			t
+		);
 
 	if (darker && !brighter) {
 		const cur = getSession().energy;

@@ -1,5 +1,6 @@
 # Chaos Tone — Changelog
 
+- [0.1.9 — Virtual DJ instrument shell](#019--virtual-dj-instrument-shell-2026-09-08)
 - [0.1.8 — Virtual DJ MCP bridge](#018--virtual-dj-mcp-bridge-2026-09-08)
 - [0.1.7 — Virtual DJ morning verbs + intent](#017--virtual-dj-morning-verbs--intent-2026-09-08)
 - [0.1.6 — Virtual DJ Slice A musical credibility](#016--virtual-dj-slice-a-musical-credibility-2026-09-07)
@@ -12,6 +13,25 @@
 
 ---
 
+
+## 0.1.9 — Virtual DJ instrument shell (2026-09-08)
+
+In-app Cockpit instrument matching Jony’s signed-off north-star mockups. Humans drive the same `/api/dj/*` session MCP already uses. No parallel brain, no chat transcript, no persistence.
+
+### What landed
+
+- Full-viewport Virtual DJ shell on `/` (header, agent conductor, main deck, session plaque, role modules) for the four states: IDLE Start, LIVE mid-energy, after “take it darker”, STOPPED/halt Resume.
+- Conductor pads + intent field POST `/api/dj/intent` (`text`, `if_revision`, `client_op_id`). Stop pad sends `emergency stop`. 409 refreshes session and shows a clear conflict line. Pads gated until `startDeck` (user gesture / `Tone.start`).
+- Transport wired to session start/pause/stop, mute, energy, bar heartbeat. Last intent is sentence case. Stem hues are categorical meters, not brand copper.
+- North-star PNG refs remain in `docs/refs/virtual-dj-ui/`. Display mapping lives in `src/lib/dj/instrument-view.ts`.
+
+### Out of scope
+
+Ableton, auth, Supabase, persistence, real WAV stems, live analyzer VU (meters are derived from role gain and labeled as such). Session `perc` stays on the API and is not a sixth mockup bay.
+
+### Verified
+
+`pnpm check` / `pnpm test` / `pnpm build`, plus browser pass of the four chrome states.
 
 ## 0.1.8 — Virtual DJ MCP bridge (2026-09-08)
 
