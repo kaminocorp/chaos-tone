@@ -25,3 +25,31 @@ Launcher package script mcp:vdj or tsx mcp/vdj/server.ts.
 Cursor MCP settings or mcp.json. Claude Code mcpServers entry.
 Smoke: Vite, Start deck, enable MCP, session_get, session_start, intent with if_revision. On 409 refresh revision.
 Files: mcp/vdj/client.ts server.ts client.test.ts. See virtual-dj-next-steps.md.
+
+## Copy-paste: Cursor / Claude Code
+
+MCP server name: `virtual-dj`
+
+- command: `pnpm`
+- args: `["mcp:vdj"]`
+- cwd: `/Users/philippholke/kaminocorp/chaos-tone`
+- env: `VDJ_BASE_URL=http://localhost:5173`
+
+Fenced JSON example for `mcpServers` (Cursor `.cursor/mcp.json` and Claude Code project MCP):
+
+```json
+{
+  "mcpServers": {
+    "virtual-dj": {
+      "command": "pnpm",
+      "args": ["mcp:vdj"],
+      "cwd": "/Users/philippholke/kaminocorp/chaos-tone",
+      "env": {
+        "VDJ_BASE_URL": "http://localhost:5173"
+      }
+    }
+  }
+}
+```
+
+Smoke: `pnpm install && pnpm dev`; Start deck in browser; then `session_get`, `session_start`, `intent`.
