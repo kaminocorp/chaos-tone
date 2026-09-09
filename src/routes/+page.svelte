@@ -1,5 +1,5 @@
 <script lang="ts">
-	import Workbench from '$lib/components/workbench/Workbench.svelte';
+	import VirtualDjShell from '$lib/components/dj/VirtualDjShell.svelte';
 </script>
 
-<Workbench />
+<VirtualDjShell />
