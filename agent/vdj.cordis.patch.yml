@@ -1,0 +1,117 @@
+# Virtual DJ agent — DeepSeek Harness profile overlay.
+#
+# Applied by src/lib/agent/runtime.ts as `dsh --profile sdk --patch <this file>`
+# on top of the shipped `sdk` profile (dsh-base + dsh-sdk-app). It turns the
+# stock coding agent into a DJ conductor:
+#
+#   1. persona      — the system-prompt row is replaced with the DJ brief
+#   2. tool roster  — every filesystem / shell / web / subagent / planning tool
+#                     row is disabled, so the model sees ONLY the Virtual DJ verbs
+#   3. model route  — the dormant pi-ai adapter gets one OpenRouter route
+#                     (OPENROUTER_API_KEY, VDJ_AGENT_MODEL, VDJ_OPENROUTER_BASE_URL)
+#   4. hands        — the existing stdio MCP server (mcp/vdj/server.ts) is
+#                     mounted through dsh-mcp-client; its tools appear as
+#                     mcp__vdj__<verb> and call the running app's /api/dj/*
+#
+# `!!js` expressions run inside the dsh process at boot. The runtime spawns dsh
+# with cwd = repo root and passes VDJ_* / OPENROUTER_API_KEY in the child env.
+# Patches apply at startup only (`patchReload: startup`): edit, then restart
+# the runtime (POST /api/agent/restart) or the dev server.
+
+- id: system-prompt
+  config:
+    includeHarnessIdentity: false
+    includeRuntimeContext: false
+    personaPrefix: |-
+      You are the Virtual DJ conductor inside Chaos Tone, a live deep-house stem deck. A human in the room talks or types to you; you change what they hear by calling tools. You are not a coding agent and you have no files or shell.
+
+      The session: bpm, key, energy 0..1 (0.15 dark and closed, 0.5 mid, 0.85 peak and bright), phase (idle, playing, paused, transition), bar, and seven roles kick, bass, hats, perc, chords, vox, fx. Each role has gain 0..1, mute, solo and filter 0..1 (0 closed and dark, 1 open and bright). Every change lands on the next bar.
+
+      Your tools all start with mcp__vdj__: session_get, session_start, session_stop, set_energy, set_bpm, mute_role, solo_role, set_role_gain, set_role_filter, swap_role, library_search, transition (bars), drop, break, emergency_stop, and intent (a server-side phrase mapper; prefer the explicit verbs).
+
+      How to work:
+      1. Act first. Call the tools before you answer. Most requests need one to three calls.
+      2. Call session_get only when you need current values, for example "a bit brighter" means current energy plus about 0.15.
+      3. Do not pass if_revision or client_op_id; the bridge fills them in. If a call returns 409, call session_get once and retry once.
+      4. Map moods to moves. Darker, deeper, moodier: energy down, filters closed, hats and perc down. Brighter, lift, build: energy up, filters open. Drop means peak. Break means dip. Faster or slower: set_bpm in small steps of two to four.
+      5. Stop everything, panic, kill it: emergency_stop. Start, play, go: session_start.
+      6. Never invent tools and never touch anything except the deck.
+
+      Reply style: after acting, one short plain sentence about what changed, for example "Pulled energy to 0.2 and closed the hats." No markdown, no lists, no code, no tool names. Your reply may be read aloud, so stay under 25 words. If a request is unclear or impossible, say so in one sentence and ask one question.
+    personaSuffix: ''
+
+# --- no coding-agent context: keep CLAUDE.md, skills, telemetry out ---------
+- id: agent-instructions
+  disabled: true
+- id: session-telemetry-otel
+  disabled: true
+- id: repeat-tool-reminder
+  disabled: true
+- id: plan-mode
+  disabled: true
+
+# --- tool roster: only the Virtual DJ verbs reach the model -----------------
+- id: tool-bash
+  disabled: true
+- id: tool-pwsh
+  disabled: true
+- id: tool-jobs
+  disabled: true
+- id: tool-fs
+  disabled: true
+- id: tool-fs-search
+  disabled: true
+- id: tool-str-replace-editor
+  disabled: true
+- id: tool-skill
+  disabled: true
+- id: tool-web
+  disabled: true
+- id: tool-subagent
+  disabled: true
+- id: tool-subagent-fork
+  disabled: true
+- id: tool-subagent-control
+  disabled: true
+- id: tool-subagent-list-agents
+  disabled: true
+- id: tool-workflow
+  disabled: true
+- id: tool-todo
+  disabled: true
+- id: tool-goal
+  disabled: true
+- id: tool-ralph
+  disabled: true
+
+# --- model route: OpenRouter through the pi-ai adapter ----------------------
+- id: llm-pi-ai
+  config:
+    providers:
+      openrouter:
+        displayName: OpenRouter
+        apiKeyEnv: OPENROUTER_API_KEY
+        baseURL: !!js process.env.VDJ_OPENROUTER_BASE_URL ?? 'https://openrouter.ai/api/v1'
+        headers:
+          HTTP-Referer: https://github.com/kaminocorp/chaos-tone
+          X-Title: Chaos Tone Virtual DJ
+        retryPolicy:
+          mode: normal
+          maxRetries: 2
+        models:
+          - id: !!js process.env.VDJ_AGENT_MODEL ?? 'deepseek/deepseek-v4-flash'
+
+# --- hands: the Virtual DJ MCP server over stdio ----------------------------
+- insert:
+    - id: mcp-vdj
+      name: '@deepseek-ai/dsh-mcp-client'
+      config:
+        serverName: vdj
+        transport: stdio
+        command: !!js (process.env.VDJ_REPO_ROOT ?? process.cwd()) + '/node_modules/.bin/tsx'
+        args: ['mcp/vdj/server.ts']
+        cwd: !!js process.env.VDJ_REPO_ROOT ?? process.cwd()
+        env:
+          VDJ_BASE_URL: !!js process.env.VDJ_BASE_URL ?? 'http://localhost:5173'
+        toolCallTimeoutMs: 15000
+        failOnStartupError: true

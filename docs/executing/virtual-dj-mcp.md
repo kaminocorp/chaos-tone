@@ -1,5 +1,5 @@
 # Virtual DJ MCP
-Thin stdio MCP bridge over the running app HTTP API. SoT stays in chaos-tone.
+Thin stdio MCP bridge over the running app HTTP API. SoT stays in chaos-tone. Since 0.1.10 the in-app DeepSeek Harness agent mounts this same server (`agent/vdj.cordis.patch.yml`), so external agents and the built-in one share one verb surface.
 
 ## Prerequisites
 1. App up via Vite on port 5173

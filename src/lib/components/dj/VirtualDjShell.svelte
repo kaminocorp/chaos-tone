@@ -33,6 +33,7 @@
 	} from '$lib/dj/instrument-view';
 	import { ROLE_IDS, type DjSession, type RoleId } from '$lib/dj/session';
 	import { onDestroy, onMount } from 'svelte';
+	import ConductorChat from './ConductorChat.svelte';
 
 	let session = $state<DjSession | null>(null);
 	let deckOn = $state(false);
@@ -465,6 +466,8 @@
 				<span data-key="stems"><i></i> {legendThird()}</span>
 			</div>
 		</section>
+
+		<ConductorChat {deckOn} onSession={(next) => adopt(next)} />
 	</div>
 
 	<section class="vdj-section vdj-roles" aria-label="Role modules">
@@ -735,7 +738,7 @@
 
 	.vdj-mid {
 		display: grid;
-		grid-template-columns: minmax(0, 1fr) 320px;
+		grid-template-columns: minmax(0, 1fr) 280px minmax(320px, 26vw);
 		gap: 8px;
 		min-height: 0;
 	}

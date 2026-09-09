@@ -8,13 +8,15 @@ Chaos Tone is a SvelteKit-based "trainable offline music sketchbook." The repo i
 
 **Stateless v1 (decided 2026-06-10).** v1 ships with **no backend, no accounts, and no persistence** — it is **truly ephemeral** (a refresh is a blank slate; no IndexedDB/localStorage/cloud). The entire **Supabase + auth track (Phases 4 & 5) is deferred**; do not add `@supabase/supabase-js`, a `src/lib/db/` client, auth gating, or persistence without explicit direction. The `/auth/*` route stubs stay **dormant** (kept, unused). The v1 critical path is **Phase 1 → 2 → 3 → 6 → 7** (audio → param-store), with Phase 8 (3D) parallel and Phases 9–10 closing out. See the "Stateless v1" amendment at the top of the scaffolding plan for the full consequence list. The "sketch = snapshot the stores" idea still holds _in memory_ for a session; it just isn't written anywhere yet.
 
+**Virtual DJ track (0.1.5 → 0.1.10, Sep 2026).** `/` is now the Virtual DJ Cockpit instrument (`src/lib/components/dj/VirtualDjShell.svelte`), not the five-region Workbench (which still exists under `src/lib/components/workbench/` but is unmounted). An in-memory DJ session store (`src/lib/dj/session.ts`, revision CAS + `client_op_id` idempotency) is mutated by HTTP verbs under `/api/dj/*`, mirrored by a stdio MCP server (`mcp/vdj/`), and driven audibly by a Tone.js placeholder deck (`src/lib/dj/deck.ts`). Since 0.1.10 an embedded agent lives in the app: the open-source **DeepSeek Harness** runs as a `dsh --profile sdk` subprocess (`src/lib/agent/runtime.ts`, overlay `agent/vdj.cordis.patch.yml`), routed through **OpenRouter** (`OPENROUTER_API_KEY` in `.env`), with the MCP server as its only tools; the Cockpit AGENT panel is a chat + push-to-talk voice surface over `/api/agent/chat`. Read `docs/vision-virtual-dj.md` and `docs/executing/virtual-dj-*.md` before touching any of it. The adapter is `@sveltejs/adapter-vercel` (nodejs22.x); the agent itself only runs on a long-lived Node host (the Mini), never on Vercel.
+
 When asked to "add a feature," first check whether the relevant phase has landed. If it hasn't, the work probably belongs to that phase's plan, not a one-off addition. See `docs/completions/` for what's actually shipped.
 
 ## Commands
 
 ```sh
 pnpm dev          # vite dev — serves at http://localhost:5173
-pnpm build        # vite build (currently uses adapter-auto)
+pnpm build        # vite build (adapter-vercel, nodejs22.x)
 pnpm preview      # preview built output
 pnpm check        # svelte-kit sync && svelte-check (typecheck)
 pnpm check:watch  # same, in watch mode
@@ -22,6 +24,8 @@ pnpm lint         # prettier --check . && eslint .
 pnpm format       # prettier --write . (NOTE: docs/ is intentionally excluded)
 pnpm test         # vitest run
 pnpm test:watch   # vitest in watch mode
+pnpm mcp:vdj      # Virtual DJ stdio MCP server (needs the app running)
+pnpm agent:smoke  # boot the DeepSeek Harness agent end-to-end (--fake works without a key)
 ```
 
 Run a single test file: `pnpm test src/lib/smoke.test.ts`
@@ -32,6 +36,7 @@ Vitest picks up `src/**/*.{test,spec}.{js,ts}` (see `vite.config.ts`).
 ## Environment requirements
 
 - **Node**: 22 LTS pinned in `.nvmrc`. `engine-strict=false` in `.npmrc` lets installs proceed on mismatched Node versions, but Node 23 sits in a literal gap in upstream `engines.node` ranges and will warn. Use `nvm use` to switch.
+- **`.env`**: copy `.env.example`; `OPENROUTER_API_KEY` turns the Virtual DJ agent on. Without it the AGENT panel reports offline and everything else works.
 - **pnpm**: 10.28.2 (pinned via `packageManager`). pnpm 10 disables postinstall scripts by default; `package.json` `pnpm.onlyBuiltDependencies` allowlists `esbuild` because Vite needs its native binary. Adding a package that needs a postinstall (e.g. native audio bindings later) requires adding it to this list.
 
 ## Architecture
@@ -90,7 +95,9 @@ These are documented in [`docs/executing/frontend-overview.md`](./docs/executing
 - **`docs/` is in `.prettierignore`.** The docs in this repo are user-authored prose; do not reformat them. If you write a new doc, place it in `docs/` and write it the way the author would.
 - **`.claude/` is also in `.prettierignore`.** Local agent settings shouldn't churn from formatter runs.
 - **ESLint flat config** (`eslint.config.js`) needs the `svelteConfig` injection into the `*.svelte` parser block — without it, `$state` and friends get flagged as undefined globals.
-- **Adapter is currently `adapter-auto`**, which prints a "Could not detect a supported production environment" warning on build. Expected for Phase 1; Phase 9 swaps in `@sveltejs/adapter-vercel`.
+- **Adapter is `@sveltejs/adapter-vercel`** (`runtime: nodejs22.x`) since the Virtual DJ track. The build traces the DeepSeek Harness dependency tree into the function; that is expected, and the agent still only runs on a long-lived Node host.
+- **The harness packages are pinned to one exact version** (`@deepseek-ai/dsh`, `dsh-sdk-client`, `dsh-sdk-protocol` at `0.1.2-rc.1`): the client refuses a runtime of another version, and `dsh-sdk-protocol` must be an explicit dependency because the npm `latest` tag lags. Bump all three together. Their optional native postinstalls stay ignored by pnpm on purpose.
+- **`.dsh/` is harness scratch** (sessions, storages): gitignored, safe to delete.
 - **Generated files**: `.svelte-kit/` and `src/lib/db/types.ts` (the latter not yet generated). Both are ignored by prettier.
 
 ## Working with the planning docs

@@ -24,3 +24,6 @@ coverage
 # Editor
 .idea
 *.swp
+
+# DeepSeek Harness home (Virtual DJ agent runtime: sessions, caches)
+.dsh

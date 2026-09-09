@@ -17,7 +17,7 @@ Implement the FE to **match these screens**, not as loose inspiration. Apply Kam
 
 - **Last intent:** sentence case (not ALL CAPS)
 - **Stem hues:** categorical meters (kick/bass/hats/…) — not brand accent copper
-- Agent conductor is a pad row + intent field + plaque — **never a chat thread**
+- Agent conductor is a pad row + intent field + plaque — **never a chat thread** *(amended 2026-09-09 by Phil: the pad row stays as designed; a separate AGENT column with a chat transcript and mic now sits beside the session plaque — see `docs/executing/virtual-dj-agent.md`)*
 - Wire to existing `/api/dj/*` (same as MCP)
 
 ## Structure to match

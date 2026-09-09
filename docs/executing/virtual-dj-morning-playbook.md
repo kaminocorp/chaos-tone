@@ -82,5 +82,12 @@ curl -s "http://localhost:5173/api/dj/library/search?role=kick&limit=3" | jq .
 
 Use POST /api/dj/emergency-stop with if_revision + client_op_id. All roles mute, energy 0. Then Stop deck.
 
-## 7. Checks + deferred
+## 7. Agent (optional, needs OPENROUTER_API_KEY in .env)
+
+1. `cp .env.example .env`, set `OPENROUTER_API_KEY`, restart `pnpm dev`.
+2. AGENT panel (right column) should say **stopped**; Start deck; type `take it darker` → pill goes **starting → working**, a `set_energy` verb row appears, the reply lands in one sentence, the energy meter drops.
+3. Press the mic (Chrome), say “drop in eight bars”, pause. Tick **speak replies** to hear it back.
+4. Without a key, prove the chain anyway: `pnpm agent:smoke --fake` against the running app (expects PASS).
+
+## 8. Checks + deferred
 Deferred next: Ableton, auth, real WAVs. See virtual-dj-mcp.md and virtual-dj-next-steps.md.

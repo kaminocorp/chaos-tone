@@ -79,7 +79,9 @@
 >
 	<div class="flex flex-wrap items-center justify-between gap-2">
 		<div class="flex min-w-0 flex-col gap-0.5">
-			<div class="text-ink-500 font-mono text-[10px] tracking-widest uppercase">Virtual DJ v0.2</div>
+			<div class="text-ink-500 font-mono text-[10px] tracking-widest uppercase">
+				Virtual DJ v0.2
+			</div>
 			<div class="font-mono text-xs tabular-nums">
 				{#if session}
 					E {session.energy.toFixed(2)} · rev {session.revision} · {session.bpm} BPM · {session.key} ·
@@ -104,7 +106,9 @@
 		</div>
 	</div>
 	{#if session}
-		<div class="text-ink-500 mt-1 flex flex-wrap gap-2 font-mono text-[10px] tracking-wider uppercase">
+		<div
+			class="text-ink-500 mt-1 flex flex-wrap gap-2 font-mono text-[10px] tracking-wider uppercase"
+		>
 			{#each Object.entries(session.roles) as [role, state] (role)}
 				<span
 					class="border-ink-700 rounded border px-1.5 py-0.5 {state.mute
