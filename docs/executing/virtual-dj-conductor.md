@@ -1,6 +1,6 @@
 # Virtual DJ conductor (in-app)
 
-The instrument on `/` is a human surface over the same HTTP session MCP already uses. There is no browser LLM and no chat transcript.
+The instrument on `/` is a human surface over the same HTTP session MCP already uses. Since 0.1.10 it also carries the **AGENT** panel: a chat transcript and push-to-talk mic in front of the in-app DeepSeek Harness agent (see [`virtual-dj-agent.md`](./virtual-dj-agent.md)). The pads and the `> intent` field stay deterministic (phrase mapper, no LLM); the agent panel is where free-form language goes.
 
 ## Gesture gate
 
@@ -32,6 +32,10 @@ Last-intent plaques are **sentence case**, never ALL CAPS.
 - STOPPED / halt → outline **Resume** (start + energy restore + unmute)
 
 Mute buttons call `POST /api/dj/role/mute`. Energy / phase / stem meters read the polled session.
+
+## Agent panel
+
+Third column of the mid row. Status pill (offline / stopped / starting / ready / working / error), transcript with you / agent / verb rows, composer, mic (Chrome Web Speech), “speak replies” toggle. It POSTs `/api/agent/chat` and adopts any DJ session a verb returns, so meters move before the next poll. Deck gating does not apply: the agent can be asked before Start; the panel just reminds you to start the deck to hear it.
 
 ## Display vs session
 

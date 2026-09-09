@@ -1,5 +1,6 @@
 # Chaos Tone — Changelog
 
+- [0.1.10 — Virtual DJ agent: DeepSeek Harness + OpenRouter](#0110--virtual-dj-agent-deepseek-harness--openrouter-2026-09-09)
 - [0.1.9 — Virtual DJ instrument shell](#019--virtual-dj-instrument-shell-2026-09-08)
 - [0.1.8 — Virtual DJ MCP bridge](#018--virtual-dj-mcp-bridge-2026-09-08)
 - [0.1.7 — Virtual DJ morning verbs + intent](#017--virtual-dj-morning-verbs--intent-2026-09-08)
@@ -13,6 +14,28 @@
 
 ---
 
+
+## 0.1.10 — Virtual DJ agent: DeepSeek Harness + OpenRouter (2026-09-09)
+
+Talk to the deck. The Cockpit gains an **AGENT** panel (chat + push-to-talk voice) backed by the open-source DeepSeek Harness, lifted in as the app’s native agent and routed through OpenRouter. Same hands as before: the harness drives the existing Virtual DJ MCP server, whose verbs hit `/api/dj/*`. Phil’s direction; supersedes the “never a chat thread” soft rule from the UI refs. Full record in [`docs/executing/virtual-dj-agent.md`](./executing/virtual-dj-agent.md).
+
+### What landed
+
+- **Runtime** — `src/lib/agent/runtime.ts` spawns `dsh --profile sdk` through `@deepseek-ai/dsh-sdk-client` (all three harness packages pinned to `0.1.2-rc.1`): one subprocess per server process, one harness session per browser conversation, lazy start, reap-and-relaunch on transport loss, `POST /api/agent/restart`.
+- **Overlay** — `agent/vdj.cordis.patch.yml` turns the stock coding agent into a DJ conductor: DJ persona, every fs/shell/web/subagent/plan tool row disabled, one OpenRouter route on the pi-ai adapter (`OPENROUTER_API_KEY`, `VDJ_AGENT_MODEL`, reasoning off), and the MCP server mounted via `dsh-mcp-client` so the model sees exactly the 16 `mcp__vdj__*` verbs.
+- **HTTP** — `GET /api/agent/status`, `POST /api/agent/chat` (SSE stream of `ConductorEvent`s: text deltas, tool calls, tool results carrying the DJ session snapshot, errors, done). The human’s message is recorded as `last_intent`, so the plaque shows it before any verb lands.
+- **Cockpit** — `ConductorChat.svelte` as a third column beside the session plaque: status pill, transcript (you / agent / verb rows), composer, mic, “speak replies”. Tool results adopt the returned session immediately; the poll catches the rest.
+- **Voice** — `src/lib/dj/voice.ts`: Web Speech recognition (push-to-talk, interim text) and synthesis, Chrome-first, text fallback elsewhere.
+- **Smoke** — `pnpm agent:smoke --fake` boots the real runtime against a fake OpenAI-compatible model and asserts a verb changed the session; `--fake-server` keeps the fake up for hand-testing the UI without a key.
+- Tests: config, event mapping, runtime lifecycle (fake harness), SSE parsing, voice helpers.
+
+### Out of scope
+
+Vercel (needs a long-lived Node process), mid-turn cancel (no such wire method in the harness yet), conversation persistence, server-side STT/TTS, Ableton. `.dsh/` is harness-owned scratch, gitignored.
+
+### Verified
+
+`pnpm test` 97 passed · `pnpm check` 0 errors · `pnpm build` · `pnpm agent:smoke --fake` PASS against a dev server (runtime ready in ~2 s, `set_energy` → session energy 0.15, text reply streamed). Real OpenRouter turns need a key on the Mini; the 401 path was exercised and surfaces as a friendly hint.
 
 ## 0.1.9 — Virtual DJ instrument shell (2026-09-08)
 
